@@ -1,0 +1,3 @@
+include 'hyd-dsl'
+
+rootProject.name = 'dsl-hydrater'

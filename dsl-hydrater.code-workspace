@@ -1,0 +1,31 @@
+{
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/*.log": true,
+      "**/build": true,
+      "**/bin": true,
+      "**/node_modules": true,
+      "**/.vscode": true,
+      ".gradle": true,
+      ".idea": true,
+      ".gitignore": true,
+      ".gitattributes": true,
+      "gradle*": true,
+      "LICENSE": true,
+      "fc-ide/.*": true,
+      "fc-ide/src/env.d.ts": true,
+      "fc-ide/src/boot": true,
+
+      "fc-ide/node_modules": true,
+      "fc-ide/package-lock.json": true,
+      "fc-ide/babel.config.js": true,
+      "fc-ide/tsconfig.json": true
+        },
+        "java.configuration.updateBuildConfiguration": "automatic"
+  }
+}
