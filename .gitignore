@@ -8,6 +8,7 @@
 
 .gitattributes
 
+jacoco
 gen-src
 build
 bin

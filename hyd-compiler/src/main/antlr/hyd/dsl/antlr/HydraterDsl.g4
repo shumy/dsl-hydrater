@@ -11,7 +11,8 @@ root:
 entity: NAME ':' expr ';';
 
 expr: '(' expr ')' multiplicity?
-  | left=expr '|' right=expr
+  | left=expr oper='&' right=expr
+  | left=expr oper='|' right=expr
   | single
   | map
 ;
@@ -35,6 +36,6 @@ multiplicity: value=('?' | '+' | '*') ('splitter' '=' splitter=TEXT)?;
 NAME: [A-Z][A-Za-z0-9_]* ;
 ID: [a-z][A-Za-z0-9_-]* ;
 
-TEXT: '\'' (~["\r\n])* '\'';
+TEXT: '\'' ( ~['\r\n] )* '\'';
 
 WS: [ \t\r\n\f]+ -> skip ;
