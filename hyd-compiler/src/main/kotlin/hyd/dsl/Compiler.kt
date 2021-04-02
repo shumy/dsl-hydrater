@@ -109,6 +109,9 @@ class Compiler(private val dsl: String): HydraterDslBaseListener() {
     return this?.let {
       val type = it.value.text.extractMultiplicity()
       val splitter = it.splitter?.let { it.text.extract() } ?: ","
+      if (type == MultiplicityType.OPTIONAL && it.splitter != null)
+        throw DslException("Optional multiplicity doesn't support splitter!")
+
       EMultiplicity(type, splitter)
     } ?: EMultiplicity(MultiplicityType.ONE)
   }

@@ -24,6 +24,17 @@ class TestParsing {
     )
   }
 
+  @Test fun testAndExpression() {
+    val dsl = """
+      grammar test.Grammar ;
+
+      root: 'left' & 'right' ;
+    """
+    dsl.check(
+      "root" to EAnd(EToken("left"), EToken("right"))
+    )
+  }
+
   @Test fun testRefExpression() {
     val dsl = """
       grammar test.Grammar ;
@@ -128,9 +139,9 @@ class TestParsing {
     val dsl = """
       grammar test.Grammar ;
 
-      root: ('set' & Rule)+ #';';
+      root: ('set' & Rule)+';' ;
 
-      Rule: ('v1' | 'v2') ; 
+      Rule: ('v1' | 'v2') ;
     """
     val Rule = EBound(EOr(EToken("v1"), EToken("v2")), EMultiplicity(MultiplicityType.ONE, ","))
     dsl.check(

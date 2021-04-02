@@ -30,7 +30,7 @@ assign: aExist | aText | aRef | aType ;
 
 type: value=('bool' | 'text' | 'int' | 'float' | 'date' | 'time' | 'datetime') ('@' checker=identity)? ;
 
-multiplicity: value=('?' | '+' | '*') ('#' splitter=TEXT)?;
+multiplicity: value=('?' | '+' | '*') splitter=TEXT?;
 
 identity: (ID '.')* NAME ;
 
