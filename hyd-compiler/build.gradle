@@ -21,6 +21,7 @@ dependencies {
 
   implementation project(':')
   implementation 'org.antlr:antlr4-runtime:4.8'
+  implementation 'org.jetbrains.kotlin:kotlin-reflect'
 }
 
 generateGrammarSource {
@@ -30,8 +31,10 @@ generateGrammarSource {
 
 compileKotlin {
   dependsOn generateGrammarSource
+  kotlinOptions {
+    freeCompilerArgs += '-Xuse-experimental=kotlin.ExperimentalStdlibApi'
+  }
 }
-
 
 clean.doLast {
   file('gen-src').deleteDir()

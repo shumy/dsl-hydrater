@@ -91,10 +91,10 @@ class TestParsing {
     val dsl = """
       grammar test.Grammar ;
 
-      root: value -type-> text@checkers.StartWithUpperCase ;
+      root: value -type-> text@StartWithUpperCase ;
     """
     dsl.check(
-      "root" to EMapType("value", ValueType.TEXT, "checkers.StartWithUpperCase")
+      "root" to EMapType("value", ValueType.TEXT, StartWithUpperCase::class)
     )
   }
 

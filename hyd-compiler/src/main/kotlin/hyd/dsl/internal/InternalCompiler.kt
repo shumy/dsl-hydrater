@@ -1,5 +1,6 @@
-package hyd.dsl
+package hyd.dsl.internal
 
+import hyd.dsl.*
 import hyd.dsl.antlr.*
 import hyd.dsl.antlr.HydraterDslParser.*
 
@@ -9,15 +10,19 @@ import org.antlr.v4.runtime.tree.ErrorNode
 import org.antlr.v4.runtime.tree.ParseTreeWalker
 import java.util.*
 
+import kotlin.reflect.KClass
+import kotlin.reflect.full.defaultType
+import kotlin.reflect.full.allSupertypes
+
 const val RULE = "root"
 
-class Compiler(private val dsl: String): HydraterDslBaseListener() {
+internal class InternalCompiler(private val dsl: String, private val deps: DslDependencies): HydraterDslBaseListener() {
   private lateinit var grammar: Grammar
 
   private val errors = mutableListOf<String>()
   private val refs = mutableMapOf<String, ERef>()
 
-  fun compile(): DslResult {
+  internal fun compile(): DslResult {
     try {
       val lexer = HydraterDslLexer(CharStreams.fromString(dsl))
       val tokens = CommonTokenStream(lexer)
@@ -92,7 +97,8 @@ class Compiler(private val dsl: String): HydraterDslBaseListener() {
       
       if (assign.aType() != null) {
         val vType = assign.aType().type()
-        return EMapType(key, vType.value.text.extractType(), vType.checker?.let { it.processIdentity() })
+        val type = vType.value.text.extractType()
+        return EMapType(key, type, vType.checker?.let { findChecker(it.processIdentity(), type) })
       }
     }
 
@@ -102,13 +108,14 @@ class Compiler(private val dsl: String): HydraterDslBaseListener() {
   private fun IdentityContext.processIdentity(): String {
     val namespace = ID().joinToString(separator = ".") { it.text }
     val name = NAME().text
-    return "$namespace.$name"
+    return if (namespace.isEmpty()) name else "$namespace.$name"
   }
   
   private fun MultiplicityContext?.processMultiplicity() : EMultiplicity {
     return this?.let {
       val type = it.value.text.extractMultiplicity()
       val splitter = it.splitter?.let { it.text.extract() } ?: ","
+
       if (type == MultiplicityType.OPTIONAL && it.splitter != null)
         throw DslException("Optional multiplicity doesn't support splitter!")
 
@@ -119,29 +126,36 @@ class Compiler(private val dsl: String): HydraterDslBaseListener() {
   private fun findRuleRef(name: String): ERef {
     return refs.getOrPut(name) { ERef(name, LazyRef()) }
   }
+
+  private fun findChecker(name: String, type: ValueType): KClass<out DslChecker<*>> {
+    val checker = deps.checkers[name] ?: throw DslException("Checker '$name' not found!")
+    val value = checker.allSupertypes.first().arguments.first().type!!
+    
+    val checkerType = TypeEngine.convert(value)
+    if (checkerType != type)
+      throw DslException("Checker '$name' of type '$checkerType' is incompatible with dsl input '$type'!")
+
+    return checker
+  }
 }
-
-data class DslResult(val grammar: Grammar, val errors: List<String>)
-
-class DslException(val msg: String) : Exception(msg)
 
 /* ------------------------- helpers -------------------------*/
 private fun String.extract(): String = substring(1, this.length - 1)
 
-private fun String.extractType(): ValueType = when {
-  this == "bool" -> ValueType.BOOL
-  this == "text" -> ValueType.TEXT
-  this == "int" -> ValueType.INT
-  this == "float" -> ValueType.FLOAT
-  this == "date" -> ValueType.DATE
-  this == "time" -> ValueType.TIME
-  this == "datetime" -> ValueType.DATETIME
+private fun String.extractType(): ValueType = when (this) {
+  "bool" -> ValueType.BOOL
+  "text" -> ValueType.TEXT
+  "int" -> ValueType.INT
+  "float" -> ValueType.FLOAT
+  "date" -> ValueType.DATE
+  "time" -> ValueType.TIME
+  "datetime" -> ValueType.DATETIME
   else -> throw NotImplementedError("A dsl branch is not implemented! - String.type()")
 }
 
-private fun String.extractMultiplicity(): MultiplicityType = when {
-  this == "?" -> MultiplicityType.OPTIONAL
-  this == "+" -> MultiplicityType.PLUS
-  this == "*" -> MultiplicityType.MANY
+private fun String.extractMultiplicity(): MultiplicityType = when (this) {
+  "?" -> MultiplicityType.OPTIONAL
+  "+" -> MultiplicityType.PLUS
+  "*" -> MultiplicityType.MANY
   else -> throw NotImplementedError("A dsl branch is not implemented! - String.select()")
 }

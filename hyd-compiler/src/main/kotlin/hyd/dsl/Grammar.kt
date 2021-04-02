@@ -1,5 +1,7 @@
 package hyd.dsl
 
+import kotlin.reflect.KClass
+
 enum class ValueType {
   BOOL, TEXT, INT, FLOAT, DATE, TIME, DATETIME
 }
@@ -32,7 +34,7 @@ sealed class Expression()
 
     data class EMapValue(override val key: String, val value: String, val isExist: Boolean): EMap(key)
 
-    data class EMapType(override val key: String, val type: ValueType, val checker: String? = null): EMap(key)
+    data class EMapType(override val key: String, val type: ValueType, val checker: KClass<out DslChecker<*>>? = null): EMap(key)
 
     data class EMapRef(override val key: String, val ref: ERef): EMap(key)
 
