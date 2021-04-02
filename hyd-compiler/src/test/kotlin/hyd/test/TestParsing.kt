@@ -1,15 +1,7 @@
 import hyd.dsl.*
 import org.junit.Test
 
-fun String.check(vararg rules: Pair<String, Expression>) {
-  val grammar = Compiler(this).compile()
-  println(grammar.rules)
-
-  assert(grammar.name == "test.Grammar")
-  assert(grammar.rules == rules.toMap())
-}
-
-class TestParser {
+class TestParsing {
   @Test fun testTokenExpression() {
     val dsl = """
       grammar test.Grammar ;
@@ -42,7 +34,7 @@ class TestParser {
     """
     val Rule = EToken("token")
     dsl.check(
-      "root" to ERef(Rule),
+      "root" to ERef("Rule", Rule),
       "Rule" to Rule
     )
   }
@@ -79,17 +71,29 @@ class TestParser {
     """
     val Rule = EToken("token")
     dsl.check(
-      "root" to EMapRef("value", Rule),
+      "root" to EMapRef("value", ERef("Rule", Rule)),
       "Rule" to Rule
     )
   }
 
-  @Test fun testMapTypeExpression() {
+  @Test fun testMapTypeWithCheckerExpression() {
+    val dsl = """
+      grammar test.Grammar ;
+
+      root: value -type-> text@checkers.StartWithUpperCase ;
+    """
+    dsl.check(
+      "root" to EMapType("value", ValueType.TEXT, "checkers.StartWithUpperCase")
+    )
+  }
+
+  @Test fun testAllMapTypeExpression() {
     val dsl = """
       grammar test.Grammar ;
 
       root:
           boolV -type-> bool
+        | textV -type-> text
         | intV -type-> int
         | floatV -type-> float
         | dateV -type-> date
@@ -103,7 +107,10 @@ class TestParser {
           EOr(
             EOr(
               EOr(
-                EMapType("boolV", ValueType.BOOL),
+                EOr(
+                  EMapType("boolV", ValueType.BOOL),
+                  EMapType("textV", ValueType.TEXT)
+                ),
                 EMapType("intV", ValueType.INT)
               ),
               EMapType("floatV", ValueType.FLOAT)
@@ -121,15 +128,15 @@ class TestParser {
     val dsl = """
       grammar test.Grammar ;
 
-      root: ('set' & Rule)+ ;
+      root: ('set' & Rule)+ #';';
 
       Rule: ('v1' | 'v2') ; 
     """
     val Rule = EBound(EOr(EToken("v1"), EToken("v2")), EMultiplicity(MultiplicityType.ONE, ","))
     dsl.check(
       "root" to EBound(
-        EAnd(EToken("set"), ERef(Rule)),
-        EMultiplicity(MultiplicityType.PLUS, ",")
+        EAnd(EToken("set"), ERef("Rule", Rule)),
+        EMultiplicity(MultiplicityType.PLUS, ";")
       ),
       "Rule" to Rule
     )

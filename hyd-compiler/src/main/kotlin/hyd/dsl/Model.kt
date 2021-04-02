@@ -1,7 +1,7 @@
 package hyd.dsl
 
 enum class ValueType {
-  BOOL, INT, FLOAT, DATE, TIME, DATETIME
+  BOOL, TEXT, INT, FLOAT, DATE, TIME, DATETIME
 }
 
 enum class MultiplicityType {
@@ -19,30 +19,23 @@ sealed class Expression()
   
   data class EToken(val value: String): Expression()
   
-  data class ERef(private val lRef: LazyRef): Expression() {
-    constructor(ref: Expression) : this(LazyRef(ref))
+  data class ERef(val rule: String, internal val lRef: LazyRef): Expression() {
+    constructor(rule: String, expr: Expression) : this(rule, LazyRef(expr))
 
-    val ref: Expression
-      get() = lRef.ref!!
+    val expr: Expression
+      get() = lRef.expr!!
     
-    override fun toString() = "ERef(ref=$ref)"
+    override fun toString() = "ERef($rule)"
   }
 
   sealed class EMap(open val key: String): Expression()
 
     data class EMapValue(override val key: String, val value: String, val isExist: Boolean): EMap(key)
 
-    data class EMapType(override val key: String, val type: ValueType): EMap(key)
+    data class EMapType(override val key: String, val type: ValueType, val checker: String? = null): EMap(key)
 
-    data class EMapRef(override val key: String, private val lRef: LazyRef): EMap(key) {
-      constructor(key: String, ref: Expression) : this(key, LazyRef(ref))
+    data class EMapRef(override val key: String, val ref: ERef): EMap(key)
 
-      val ref: Expression
-        get() = lRef.ref!!
-      
-      override fun toString() = "EMapRef(key=$key, ref=$ref)"
-    }
+data class EMultiplicity(val type: MultiplicityType, val splitter: String? = ",")
 
-data class EMultiplicity(val type: MultiplicityType, val splitter: String = ",")
-
-data class LazyRef(var ref: Expression? = null)
+data class LazyRef(var expr: Expression? = null)
