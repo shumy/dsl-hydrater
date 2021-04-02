@@ -60,11 +60,8 @@ internal class InternalCompiler(private val dsl: String, private val deps: DslDe
   }
 
   private fun ExprContext.process(): Expression {
-    if (expr().size == 1) {
-      val next = expr().last().process()
-      val multiplicity = multiplicity().processMultiplicity()
-      return EBound(next, multiplicity)
-    }
+    if (expr().size == 1)
+      return EBound(expr().last().process(), multiplicity().processMultiplicity())
 
     if (oper != null) {
       if (oper.text == "&")
@@ -93,12 +90,13 @@ internal class InternalCompiler(private val dsl: String, private val deps: DslDe
         return EMapValue(key, assign.aText().TEXT().text.extract(), isExist = false)
       
       if (assign.aRef() != null)
-        return EMapRef(key, findRuleRef(assign.aRef().NAME().text))
+        return EMapRef(key, findRuleRef(assign.aRef().NAME().text), assign.aRef().multiplicity().processMultiplicity())
       
       if (assign.aType() != null) {
         val vType = assign.aType().type()
         val type = vType.value.text.extractType()
-        return EMapType(key, type, vType.checker?.let { findChecker(it.processIdentity(), type) })
+        val multiplicity = assign.aType().multiplicity().processMultiplicity()
+        return EMapType(key, type, multiplicity, vType.checker?.let { findChecker(it.processIdentity(), type) })
       }
     }
 
@@ -114,7 +112,7 @@ internal class InternalCompiler(private val dsl: String, private val deps: DslDe
   private fun MultiplicityContext?.processMultiplicity() : EMultiplicity {
     return this?.let {
       val type = it.value.text.extractMultiplicity()
-      val splitter = it.splitter?.let { it.text.extract() } ?: ","
+      val splitter = it.splitter?.let { it.text.extract() }
 
       if (type == MultiplicityType.OPTIONAL && it.splitter != null)
         throw DslException("Optional multiplicity doesn't support splitter!")
@@ -131,7 +129,7 @@ internal class InternalCompiler(private val dsl: String, private val deps: DslDe
     val checker = deps.checkers[name] ?: throw DslException("Checker '$name' not found!")
     val value = checker.allSupertypes.first().arguments.first().type!!
     
-    val checkerType = TypeEngine.convert(value)
+    val checkerType = TypeEngine.convert(value) ?: throw DslException("Checker '$name' with an unrecognized type '$value'!")
     if (checkerType != type)
       throw DslException("Checker '$name' of type '$checkerType' is incompatible with dsl input '$type'!")
 

@@ -29,6 +29,15 @@ class TestParsingError {
     dsl.expect("Checker 'StartWithUpperCase' of type 'TEXT' is incompatible with dsl input 'INT'!")
   }
 
+  @Test fun testUnrecognizedCheckerType() {
+    val dsl = """
+      grammar test.Grammar ;
+
+      root: value -type-> int@UnrecognizedType ;
+    """
+    dsl.expect("Checker 'UnrecognizedType' with an unrecognized type 'java.lang.Void'!")
+  }
+
   @Test fun testOptionalNotSupportSplitter() {
     val dsl = """
       grammar test.Grammar ;

@@ -25,8 +25,8 @@ assign: aExist | aText | aRef | aType ;
 
   aExist: '-exist->' TEXT ;
   aText: '-text->' TEXT ;
-  aRef: '-ref->' NAME ;
-  aType: '-type->' type ;
+  aRef: '-ref->' NAME multiplicity? ;
+  aType: '-type->' type multiplicity? ;
 
 type: value=('bool' | 'text' | 'int' | 'float' | 'date' | 'time' | 'datetime') ('@' checker=identity)? ;
 

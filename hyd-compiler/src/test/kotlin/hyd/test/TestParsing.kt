@@ -82,7 +82,22 @@ class TestParsing {
     """
     val Rule = EToken("token")
     dsl.check(
-      "root" to EMapRef("value", ERef("Rule", Rule)),
+      "root" to EMapRef("value", ERef("Rule", Rule), EMultiplicity(MultiplicityType.ONE)),
+      "Rule" to Rule
+    )
+  }
+
+  @Test fun testMapManyRefExpression() {
+    val dsl = """
+      grammar test.Grammar ;
+
+      root: value -ref-> Rule* ;
+
+      Rule: 'token' ; 
+    """
+    val Rule = EToken("token")
+    dsl.check(
+      "root" to EMapRef("value", ERef("Rule", Rule), EMultiplicity(MultiplicityType.MANY)),
       "Rule" to Rule
     )
   }
@@ -91,10 +106,10 @@ class TestParsing {
     val dsl = """
       grammar test.Grammar ;
 
-      root: value -type-> text@StartWithUpperCase ;
+      root: value -type-> text@StartWithUpperCase* ;
     """
     dsl.check(
-      "root" to EMapType("value", ValueType.TEXT, StartWithUpperCase::class)
+      "root" to EMapType("value", ValueType.TEXT, EMultiplicity(MultiplicityType.MANY), StartWithUpperCase::class)
     )
   }
 
@@ -119,18 +134,18 @@ class TestParsing {
             EOr(
               EOr(
                 EOr(
-                  EMapType("boolV", ValueType.BOOL),
-                  EMapType("textV", ValueType.TEXT)
+                  EMapType("boolV", ValueType.BOOL, EMultiplicity(MultiplicityType.ONE)),
+                  EMapType("textV", ValueType.TEXT, EMultiplicity(MultiplicityType.ONE))
                 ),
-                EMapType("intV", ValueType.INT)
+                EMapType("intV", ValueType.INT, EMultiplicity(MultiplicityType.ONE))
               ),
-              EMapType("floatV", ValueType.FLOAT)
+              EMapType("floatV", ValueType.FLOAT, EMultiplicity(MultiplicityType.ONE))
             ),
-            EMapType("dateV", ValueType.DATE)
+            EMapType("dateV", ValueType.DATE, EMultiplicity(MultiplicityType.ONE))
           ),
-          EMapType("timeV", ValueType.TIME)
+          EMapType("timeV", ValueType.TIME, EMultiplicity(MultiplicityType.ONE))
         ),
-        EMapType("datetimeV", ValueType.DATETIME)
+        EMapType("datetimeV", ValueType.DATETIME, EMultiplicity(MultiplicityType.ONE))
       )
     )
   }
@@ -143,7 +158,7 @@ class TestParsing {
 
       Rule: ('v1' | 'v2') ;
     """
-    val Rule = EBound(EOr(EToken("v1"), EToken("v2")), EMultiplicity(MultiplicityType.ONE, ","))
+    val Rule = EBound(EOr(EToken("v1"), EToken("v2")), EMultiplicity(MultiplicityType.ONE))
     dsl.check(
       "root" to EBound(
         EAnd(EToken("set"), ERef("Rule", Rule)),

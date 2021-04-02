@@ -9,8 +9,9 @@ import kotlin.reflect.full.isSubtypeOf
 import kotlin.reflect.typeOf
 
 import hyd.dsl.ValueType
+import hyd.dsl.DslException
 
-object TypeEngine {
+internal object TypeEngine {
   private val BOOL = typeOf<Boolean>()
   private val TEXT = typeOf<String>()
   private val INT = typeOf<Long>()
@@ -20,7 +21,7 @@ object TypeEngine {
   private val DATE = typeOf<LocalDate>()
   private val DATETIME = typeOf<LocalDateTime>()
 
-  fun convert(type: KType): ValueType {
+  fun convert(type: KType): ValueType? {
     if (type.isSubtypeOf(BOOL)) return ValueType.TEXT
     if (type.isSubtypeOf(TEXT)) return ValueType.TEXT
     if (type.isSubtypeOf(INT)) return ValueType.INT
@@ -30,6 +31,6 @@ object TypeEngine {
     if (type.isSubtypeOf(DATE)) return ValueType.DATE
     if (type.isSubtypeOf(DATETIME)) return ValueType.DATETIME
 
-    throw NotImplementedError("A dsl branch is not implemented! - TypeEngine.convert()")
+    return null
   }
 }

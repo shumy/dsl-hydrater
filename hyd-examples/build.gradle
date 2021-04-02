@@ -1,0 +1,11 @@
+plugins {
+  id 'application'
+}
+
+dependencies {
+  implementation project(':hyd-compiler')
+}
+
+application {
+  mainClass = 'hyd.examples.MainKt'
+}

@@ -4,14 +4,20 @@ class StartWithUpperCase: DslChecker<String> {
   override fun check(value: String) = throw NotImplementedError("Just a test!")
 }
 
+class UnrecognizedType: DslChecker<Void> {
+  override fun check(value: Void) = throw NotImplementedError("Just a test!")
+}
+
+
 val dependencies = DslDependencies(
-  checkers = mapOf("StartWithUpperCase" to StartWithUpperCase::class)
+  checkers = mapOf("StartWithUpperCase" to StartWithUpperCase::class, "UnrecognizedType" to UnrecognizedType::class)
 )
 
 val compiler = DslCompiler(dependencies)
 
 fun String.check(vararg rules: Pair<String, Expression>) {
   val result = compiler.compile(this)
+  println("Errors: ${result.errors}")
   println(result.grammar.rules)
 
   assert(result.errors.isEmpty())
