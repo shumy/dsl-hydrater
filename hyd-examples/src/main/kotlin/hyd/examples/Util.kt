@@ -5,7 +5,7 @@ import hyd.dsl.*
 class StartWithUpperCase: DslChecker<String> {
   override fun check(value: String) {
     if (!value.first().isUpperCase())
-      throw DslException("Name '$value' should start with UpperCase char!")
+      throw Exception("Name '$value' should start with UpperCase char!")
   }
 }
 

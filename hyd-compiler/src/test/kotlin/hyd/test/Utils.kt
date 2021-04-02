@@ -25,7 +25,7 @@ fun String.check(vararg rules: Pair<String, Expression>) {
   assert(result.grammar.rules == rules.toMap())
 }
 
-fun String.expect(vararg errors: String) {
+fun String.expect(vararg errors: DslException) {
   val result = compiler.compile(this)
   println(result.errors)
   

@@ -21,11 +21,15 @@ sealed class Expression()
   
   data class EToken(val value: String): Expression()
   
-  data class ERef(val rule: String, internal val lRef: LazyRef): Expression() {
-    constructor(rule: String, expr: Expression) : this(rule, LazyRef(expr))
+  class ERef(val rule: String, internal val lRef: LazyRef): Expression() {
+    constructor(rule: String, expr: Expression) : this(rule, LazyRef(0, 0, expr))
 
     val expr: Expression
       get() = lRef.expr!!
+    
+    override fun equals(other: Any?) = (other is ERef)
+      && rule == other.rule
+      && expr == other.expr
     
     override fun toString() = "ERef($rule)"
   }
@@ -40,7 +44,7 @@ sealed class Expression()
 
 data class EMultiplicity(val type: MultiplicityType, val splitter: String? = null)
 
-data class LazyRef(var expr: Expression? = null)
+class LazyRef(val line: Int, val pos: Int, var expr: Expression? = null)
 
 
 fun Grammar.format(): String {
@@ -73,9 +77,9 @@ fun EMap.format(): String = when (this) {
 
 fun EMultiplicity.format(): String = when (type) {
   MultiplicityType.ONE -> ""
-  MultiplicityType.OPTIONAL -> "? ${splitter?:""}"
-  MultiplicityType.MANY -> "* ${splitter?:""}"
-  MultiplicityType.PLUS -> "+ ${splitter?:""}"
+  MultiplicityType.OPTIONAL -> "?"
+  MultiplicityType.MANY -> "*${splitter.format()}"
+  MultiplicityType.PLUS -> "+${splitter.format()}"
 }
 
 fun ValueType.format(): String = when (this) {
@@ -91,3 +95,5 @@ fun ValueType.format(): String = when (this) {
 fun KClass<out DslChecker<*>>?.format(): String {
   return if (this == null) "" else "@${this.simpleName}"
 }
+
+fun String?.format(): String = if (this == null) "" else " '$this'"

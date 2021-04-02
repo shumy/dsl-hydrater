@@ -4,10 +4,9 @@ import hyd.dsl.*
 import hyd.dsl.antlr.*
 import hyd.dsl.antlr.HydraterDslParser.*
 
-import org.antlr.v4.runtime.CharStreams
-import org.antlr.v4.runtime.CommonTokenStream
-import org.antlr.v4.runtime.tree.ErrorNode
-import org.antlr.v4.runtime.tree.ParseTreeWalker
+import org.antlr.v4.runtime.*
+import org.antlr.v4.runtime.tree.*
+
 import java.util.*
 
 import kotlin.reflect.KClass
@@ -19,39 +18,44 @@ const val RULE = "root"
 internal class InternalCompiler(private val dsl: String, private val deps: DslDependencies): HydraterDslBaseListener() {
   private lateinit var grammar: Grammar
 
-  private val errors = mutableListOf<String>()
+  private val errorListener = ErrorListener()
+  private val errors = mutableListOf<DslException>()
   private val refs = mutableMapOf<String, ERef>()
 
   internal fun compile(): DslResult {
     try {
       val lexer = HydraterDslLexer(CharStreams.fromString(dsl))
+      lexer.addErrorListener(errorListener)
+      
       val tokens = CommonTokenStream(lexer)
-      val parser = HydraterDslParser(tokens)
-      val tree = parser.root()
 
+      val parser = HydraterDslParser(tokens)
+      parser.addErrorListener(errorListener)
+
+      val tree = parser.root()
       val walker = ParseTreeWalker()
       walker.walk(this, tree)
-    } catch (ex: Exception) {
-      errors.add(ex.message!!)
-      return DslResult(Grammar("Grammar Errors!", emptyMap()), errors)
+    } catch (ex: DslException) {
+      errors.add(ex)
+      return DslResult(Grammar("Grammar with errors!", emptyMap()), errors)
     }
 
     return DslResult(grammar, errors)
   }
 
   override fun visitErrorNode(error: ErrorNode) {
-    errors.add(error.text)
+    errors.add(DslException(error.symbol.line, error.symbol.charPositionInLine, error.text))
   }
 
   override fun enterRoot(ctx: RootContext) {
-    refs[RULE] = ERef(RULE, LazyRef(ctx.expr().process()))
+    refs[RULE] = ERef(RULE, LazyRef(0, 0, ctx.expr().process()))
     ctx.entity().forEach {
-      val ref = findRuleRef(it.NAME().text!!)
+      val ref = findRuleRef(0, 0, it.NAME().text!!)
       ref.lRef.expr = it.expr().process()
     }
 
     val rules = refs.map {
-      val expr = it.value.lRef.expr ?: throw DslException("Rule '${it.key}' not found!")
+      val expr = it.value.lRef.expr ?: throw DslException(it.value.lRef.line, it.value.lRef.pos, "Rule '${it.key}' not found!")
       it.key to expr
     }.toMap()
 
@@ -76,7 +80,7 @@ internal class InternalCompiler(private val dsl: String, private val deps: DslDe
         return EToken(single().token.text.extract())
       
       if (single().ref != null)
-        return findRuleRef(single().ref.text)
+        return findRuleRef(start.line, stop.charPositionInLine, single().ref.text)
     }
 
     if (map() != null) {
@@ -89,14 +93,17 @@ internal class InternalCompiler(private val dsl: String, private val deps: DslDe
       if (assign.aText() != null)
         return EMapValue(key, assign.aText().TEXT().text.extract(), isExist = false)
       
-      if (assign.aRef() != null)
-        return EMapRef(key, findRuleRef(assign.aRef().NAME().text), assign.aRef().multiplicity().processMultiplicity())
-      
+      if (assign.aRef() != null) {
+        val ref = findRuleRef(start.line, stop.charPositionInLine, assign.aRef().NAME().text)
+        return EMapRef(key, ref, assign.aRef().multiplicity().processMultiplicity())
+      }
+
       if (assign.aType() != null) {
         val vType = assign.aType().type()
         val type = vType.value.text.extractType()
         val multiplicity = assign.aType().multiplicity().processMultiplicity()
-        return EMapType(key, type, multiplicity, vType.checker?.let { findChecker(it.processIdentity(), type) })
+        val checker = vType.checker?.let { findChecker(start.line, stop.charPositionInLine, it.processIdentity(), type) }
+        return EMapType(key, type, multiplicity, checker)
       }
     }
 
@@ -115,23 +122,23 @@ internal class InternalCompiler(private val dsl: String, private val deps: DslDe
       val splitter = it.splitter?.let { it.text.extract() }
 
       if (type == MultiplicityType.OPTIONAL && it.splitter != null)
-        throw DslException("Optional multiplicity doesn't support splitter!")
+        throw DslException(start.line, stop.charPositionInLine, "Optional multiplicity doesn't support splitter!")
 
       EMultiplicity(type, splitter)
     } ?: EMultiplicity(MultiplicityType.ONE)
   }
 
-  private fun findRuleRef(name: String): ERef {
-    return refs.getOrPut(name) { ERef(name, LazyRef()) }
+  private fun findRuleRef(line: Int, pos: Int, name: String): ERef {
+    return refs.getOrPut(name) { ERef(name, LazyRef(line, pos)) }
   }
 
-  private fun findChecker(name: String, type: ValueType): KClass<out DslChecker<*>> {
-    val checker = deps.checkers[name] ?: throw DslException("Checker '$name' not found!")
+  private fun findChecker(line: Int, pos: Int, name: String, type: ValueType): KClass<out DslChecker<*>> {
+    val checker = deps.checkers[name] ?: throw DslException(line, pos, "Checker '$name' not found!")
     val value = checker.allSupertypes.first().arguments.first().type!!
     
-    val checkerType = TypeEngine.convert(value) ?: throw DslException("Checker '$name' with an unrecognized type '$value'!")
+    val checkerType = TypeEngine.convert(value) ?: throw DslException(line, pos, "Checker '$name' with an unrecognized type '$value'!")
     if (checkerType != type)
-      throw DslException("Checker '$name' of type '$checkerType' is incompatible with dsl input '$type'!")
+      throw DslException(line, pos, "Checker '$name' of type '$checkerType' is incompatible with dsl input '$type'!")
 
     return checker
   }
