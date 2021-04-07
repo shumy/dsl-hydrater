@@ -13,8 +13,6 @@ import kotlin.reflect.KClass
 import kotlin.reflect.full.defaultType
 import kotlin.reflect.full.allSupertypes
 
-const val RULE = "root"
-
 internal class InternalCompiler(private val dsl: String, private val deps: DslDependencies): HydraterDslBaseListener() {
   private lateinit var grammar: Grammar
 
@@ -48,24 +46,31 @@ internal class InternalCompiler(private val dsl: String, private val deps: DslDe
   }
 
   override fun enterRoot(ctx: RootContext) {
-    refs[RULE] = ERef(RULE, LazyRef(0, 0, ctx.expr().process()))
-    ctx.entity().forEach {
-      val ref = findRuleRef(0, 0, it.NAME().text!!)
-      ref.lRef.expr = it.expr().process()
-    }
+    // first pass to compile rules
+    ctx.entity().forEach { it.process() }
 
+    // second pass necessary to check lazy references
     val rules = refs.map {
-      val expr = it.value.lRef.expr ?: throw DslException(it.value.lRef.line, it.value.lRef.pos, "Rule '${it.key}' not found!")
+      val expr = it.value.lRef.rule ?: throw DslException(it.value.lRef.line, it.value.lRef.pos, "Rule '${it.key}' not found!")
       it.key to expr
     }.toMap()
 
-    val grammarName = ctx.identity().processIdentity()
+    val grammarName = ctx.identity().process()
     grammar = Grammar(grammarName, rules)
+  }
+
+  private fun EntityContext.process() {
+    val name = NAME().text
+    val ref = findRuleRef(start.line, stop.charPositionInLine, name)
+
+    val expr = expr().process()
+    val checkers = checker().map { it.process(expr) }.map { it.key to it }.toMap()
+    ref.lRef.rule = ERule(expr, checkers)
   }
 
   private fun ExprContext.process(): Expression {
     if (expr().size == 1)
-      return EBound(expr().last().process(), multiplicity().processMultiplicity())
+      return EBound(expr().last().process(), multiplicity().process())
 
     if (oper != null) {
       if (oper.text == "&")
@@ -88,35 +93,38 @@ internal class InternalCompiler(private val dsl: String, private val deps: DslDe
       val assign = map().assign()
 
       if (assign.aExist() != null)
-        return EMapValue(key, assign.aExist().TEXT().text.extract(), isExist = true)
-      
-      if (assign.aText() != null)
-        return EMapValue(key, assign.aText().TEXT().text.extract(), isExist = false)
+        return EMapExist(key, assign.aExist().TEXT().text.extract())
       
       if (assign.aRef() != null) {
         val ref = findRuleRef(start.line, stop.charPositionInLine, assign.aRef().NAME().text)
-        return EMapRef(key, ref, assign.aRef().multiplicity().processMultiplicity())
+        return EMapRef(key, ref, assign.aRef().multiplicity().process())
       }
 
       if (assign.aType() != null) {
         val vType = assign.aType().type()
         val type = vType.value.text.extractType()
-        val multiplicity = assign.aType().multiplicity().processMultiplicity()
-        val checker = vType.checker?.let { findChecker(start.line, stop.charPositionInLine, it.processIdentity(), type) }
-        return EMapType(key, type, multiplicity, checker)
+        val multiplicity = assign.aType().multiplicity().process()
+        return EMapType(key, type, multiplicity)
       }
     }
 
     throw NotImplementedError("A dsl branch is not implemented! - processExpr()")
   }
 
-  private fun IdentityContext.processIdentity(): String {
+  private fun CheckerContext.process(expr: Expression): EChecker {
+    val key = key.text
+    val type = expr.findKey(key) ?: throw DslException(start.line, start.charPositionInLine, "Key '$key' not found in the rule expression!")
+    val checkers = identity().map { findChecker(it.start.line, it.stop.charPositionInLine, it.process(), type) }
+    return EChecker(key, checkers)
+  }
+
+  private fun IdentityContext.process(): String {
     val namespace = ID().joinToString(separator = ".") { it.text }
     val name = NAME().text
     return if (namespace.isEmpty()) name else "$namespace.$name"
   }
   
-  private fun MultiplicityContext?.processMultiplicity() : EMultiplicity {
+  private fun MultiplicityContext?.process() : EMultiplicity {
     return this?.let {
       val type = it.value.text.extractMultiplicity()
       val splitter = it.splitter?.let { it.text.extract() }
@@ -163,4 +171,13 @@ private fun String.extractMultiplicity(): MultiplicityType = when (this) {
   "+" -> MultiplicityType.PLUS
   "*" -> MultiplicityType.MANY
   else -> throw NotImplementedError("A dsl branch is not implemented! - String.select()")
+}
+
+private fun Expression.findKey(name: String): ValueType? = when (this) {
+  is EBound -> next.findKey(name)
+  is EAnd -> left.findKey(name) ?: right.findKey(name)
+  is EOr -> left.findKey(name) ?: right.findKey(name)
+  is EMap -> if (this is EMapType && key == name) type else null
+  is EToken -> null
+  is ERef -> null
 }

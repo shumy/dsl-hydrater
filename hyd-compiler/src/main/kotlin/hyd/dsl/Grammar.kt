@@ -10,7 +10,11 @@ enum class MultiplicityType {
   OPTIONAL, ONE, PLUS, MANY
 }
 
-data class Grammar(val name: String, val rules: Map<String, Expression>)
+data class Grammar(val name: String, val rules: Map<String, ERule>)
+
+data class ERule(val expr: Expression, val checkers: Map<String, EChecker> = emptyMap())
+
+data class EChecker(val key: String, val checkers: List<KClass<out DslChecker<*>>>)
 
 sealed class Expression()
   data class EBound(val next: Expression, val multiplicity: EMultiplicity): Expression()
@@ -21,58 +25,65 @@ sealed class Expression()
   
   data class EToken(val value: String): Expression()
   
-  class ERef(val rule: String, internal val lRef: LazyRef): Expression() {
-    constructor(rule: String, expr: Expression) : this(rule, LazyRef(0, 0, expr))
+  class ERef(val name: String, internal val lRef: LazyRef): Expression() {
+    constructor(name: String, rule: ERule) : this(name, LazyRef(0, 0, rule))
 
-    val expr: Expression
-      get() = lRef.expr!!
+    val rule: ERule
+      get() = lRef.rule!!
     
     override fun equals(other: Any?) = (other is ERef)
+      && name == other.name
       && rule == other.rule
-      && expr == other.expr
     
     override fun toString() = "ERef($rule)"
   }
 
   sealed class EMap(open val key: String): Expression()
 
-    data class EMapValue(override val key: String, val value: String, val isExist: Boolean): EMap(key)
+    data class EMapExist(override val key: String, val value: String): EMap(key)
 
-    data class EMapType(override val key: String, val type: ValueType, val multiplicity: EMultiplicity, val checker: KClass<out DslChecker<*>>? = null): EMap(key)
+    data class EMapType(override val key: String, val type: ValueType, val multiplicity: EMultiplicity): EMap(key)
 
     data class EMapRef(override val key: String, val ref: ERef, val multiplicity: EMultiplicity): EMap(key)
 
 data class EMultiplicity(val type: MultiplicityType, val splitter: String? = null)
 
-class LazyRef(val line: Int, val pos: Int, var expr: Expression? = null)
+class LazyRef(val line: Int, val pos: Int, internal var rule: ERule? = null)
 
 
 fun Grammar.format(): String {
-  val mRules = rules.filter { it.key != "root" }.map{ it.format() }.joinToString("")
+  val mRules = rules.map{ it.formatRules() }.joinToString("")
   return """Grammar($name)
-  |  root: ${rules["root"]?.format()} ;
   |$mRules
   |""".trimMargin()
 }
 
-fun Map.Entry<String, Expression>.format(): String = """
+fun Map.Entry<String, ERule>.formatRules(): String {
+  val mCheckers = value.checkers.map{ it.value.format() }.joinToString("")
+  return """
   |
-  |  $key: ${value.format()} ;
+  |  $mCheckers$key: ${value.expr.format()} ;
   |""".trimMargin()
+}
+
+fun EChecker.format(): String {
+  val mCheckers = checkers.map{ it.simpleName }.joinToString(",")
+  return "${key}@[$mCheckers]\n  "
+}
 
 fun Expression.format(): String = when (this) {
   is EBound -> "(${next.format()})${multiplicity.format()}"
   is EAnd -> "${left.format()} & ${right.format()}"
   is EOr -> "${left.format()} | ${right.format()}"
   is EToken -> "'$value'"
-  is ERef -> rule
-  is EMap -> this.format()
+  is ERef -> name
+  is EMap -> format()
 }
 
 fun EMap.format(): String = when (this) {
-  is EMapValue -> "$key -${if (isExist) "exist" else "text"}-> '$value'"
-  is EMapType -> "$key -type-> ${type.format()}${checker.format()}${multiplicity.format()}"
-  is EMapRef -> "$key -ref-> ${ref.rule}${multiplicity.format()}"
+  is EMapExist -> "$key -exist-> '$value'"
+  is EMapType -> "$key -type-> ${type.format()}${multiplicity.format()}"
+  is EMapRef -> "$key -ref-> ${ref.name}${multiplicity.format()}"
 }
 
 fun EMultiplicity.format(): String = when (type) {
@@ -90,10 +101,6 @@ fun ValueType.format(): String = when (this) {
   ValueType.DATE -> "date"
   ValueType.TIME -> "time"
   ValueType.DATETIME -> "datatime"
-}
-
-fun KClass<out DslChecker<*>>?.format(): String {
-  return if (this == null) "" else "@${this.simpleName}"
 }
 
 fun String?.format(): String = if (this == null) "" else " '$this'"

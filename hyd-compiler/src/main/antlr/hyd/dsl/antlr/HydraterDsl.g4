@@ -3,12 +3,16 @@ grammar HydraterDsl;
 
 root:
   'grammar' identity ';'
-  'root' ':' expr ';'
   entity*
   EOF
 ;
 
-entity: NAME ':' expr ';';
+entity:
+  checker*
+  NAME ':' expr ';'
+;
+
+checker: key=ID '@' '[' (identity (',' identity)*) ']' ;
 
 expr: '(' expr ')' multiplicity?
   | left=expr oper='&' right=expr
@@ -21,14 +25,13 @@ single: token=TEXT | ref=NAME ;
 
 map: key=ID assign ;
 
-assign: aExist | aText | aRef | aType ;
+assign: aExist | aRef | aType ;
 
   aExist: '-exist->' TEXT ;
-  aText: '-text->' TEXT ;
   aRef: '-ref->' NAME multiplicity? ;
   aType: '-type->' type multiplicity? ;
 
-type: value=('bool' | 'text' | 'int' | 'float' | 'date' | 'time' | 'datetime') ('@' checker=identity)? ;
+type: value=('bool' | 'text' | 'int' | 'float' | 'date' | 'time' | 'datetime')  ;
 
 multiplicity: value=('?' | '+' | '*') splitter=TEXT?;
 

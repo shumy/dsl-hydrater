@@ -15,7 +15,7 @@ val dependencies = DslDependencies(
 
 val compiler = DslCompiler(dependencies)
 
-fun String.check(vararg rules: Pair<String, Expression>) {
+fun String.check(vararg rules: Pair<String, ERule>) {
   val result = compiler.compile(this)
   println("Errors: ${result.errors}")
   println(result.grammar.rules)

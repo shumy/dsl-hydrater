@@ -1,8 +1,9 @@
 grammar test.Grammar ;
 
-root: (Entity)+ ;
+Root: (Entity)+ ;
 
-Entity: 'entity' & id -type-> text@StartWithUpperCase & '{'
+id@[StartWithUpperCase]
+Entity: 'entity' & id -type-> text & '{'
   & fields -ref-> Field+ ';'
 & '}' ;
 

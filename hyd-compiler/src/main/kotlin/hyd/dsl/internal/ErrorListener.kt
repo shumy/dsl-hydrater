@@ -10,7 +10,7 @@ import hyd.dsl.DslException
 internal class ErrorListener(): BaseErrorListener() {
   override fun syntaxError(arg0: Recognizer<*, *>, arg1: Any, line: Int, pos: Int, msg: String, arg5: RecognitionException?) {
     if (arg1 is Token)
-      throw DslException(line, pos, msg)
+      throw DslException(line, pos, msg.capitalize())
   }
 
   // TODO: handle other error listeners!
