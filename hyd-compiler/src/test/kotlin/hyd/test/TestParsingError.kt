@@ -28,6 +28,26 @@ class TestParsingError {
     dsl.expect(DslException(3, 7, "Checker 'NonExistentChecker' not found!"))
   }
 
+  @Test fun testInvalidCheckEntity() {
+    val dsl = """
+    |grammar test.Grammar ;
+    |
+    |value@[IsEntityValid]
+    |Root: value -type-> int ;
+    |""".trimMargin()
+    dsl.expect(DslException(3, 7, "Invalid checker 'IsEntityValid'. Expecting implementation of 'ICheckValue'!"))
+  }
+
+  @Test fun testInvalidCheckValue() {
+    val dsl = """
+    |grammar test.Grammar ;
+    |
+    |this@[StartWithUpperCase]
+    |Root: value -type-> int ;
+    |""".trimMargin()
+    dsl.expect(DslException(3, 6, "Invalid checker 'StartWithUpperCase'. Expecting implementation of 'ICheckEntity'!"))
+  }
+
   @Test fun testIncompatibleCheckerType() {
     val dsl = """
     |grammar test.Grammar ;
@@ -36,16 +56,6 @@ class TestParsingError {
     |Root: value -type-> int ;
     |""".trimMargin()
     dsl.expect(DslException(3, 7, "Checker 'StartWithUpperCase' of type 'TEXT' is incompatible with dsl input 'INT'!"))
-  }
-
-  @Test fun testUnrecognizedCheckerType() {
-    val dsl = """
-    |grammar test.Grammar ;
-    |
-    |value@[UnrecognizedType]
-    |Root: value -type-> int ;
-    |""".trimMargin()
-    dsl.expect(DslException(3, 7, "Checker 'UnrecognizedType' with an unrecognized type 'java.lang.Void'!"))
   }
 
   @Test fun testOptionalNotSupportSplitter() {

@@ -1,16 +1,18 @@
 import hyd.dsl.*
 
-class StartWithUpperCase: DslChecker<String> {
-  override fun check(value: String) = throw NotImplementedError("Just a test!")
+class IsEntityValid: ICheckEntity {
+  override fun Entity.check() = throw NotImplementedError("Just a test!")
 }
 
-class UnrecognizedType: DslChecker<Void> {
-  override fun check(value: Void) = throw NotImplementedError("Just a test!")
+class StartWithUpperCase: ICheckValue<String, DataType.TEXT> {
+  override fun EValue<String>.check() = throw NotImplementedError("Just a test!")
 }
 
+val isEntityValid = IsEntityValid()
+val startWithUpperCase = StartWithUpperCase()
 
 val dependencies = DslDependencies(
-  checkers = mapOf("StartWithUpperCase" to StartWithUpperCase::class, "UnrecognizedType" to UnrecognizedType::class)
+  checkers = mapOf("IsEntityValid" to isEntityValid, "StartWithUpperCase" to startWithUpperCase)
 )
 
 val compiler = DslCompiler(dependencies)

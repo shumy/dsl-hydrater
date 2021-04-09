@@ -91,17 +91,21 @@ class TestParsing {
     )
   }
 
-  @Test fun testMapTypeWithCheckerExpression() {
+  @Test fun testCheckers() {
     val dsl = """
       grammar test.Grammar ;
 
+      this@[IsEntityValid]
       value@[StartWithUpperCase]
       Root: value -type-> text* ;
     """
     dsl.check(
       "Root" to ERule(
-        EMapType("value", ValueType.TEXT, EMultiplicity(MultiplicityType.MANY)),
-        mapOf("value" to EChecker("value", listOf(StartWithUpperCase::class)))
+        EMapType("value", DataType.TEXT, EMultiplicity(MultiplicityType.MANY)),
+        mapOf(
+          "value" to EChecker("value", listOf(startWithUpperCase)),
+          "this" to EChecker("this", listOf(isEntityValid))
+        )
       )
     )
   }
@@ -127,18 +131,18 @@ class TestParsing {
             EOr(
               EOr(
                 EOr(
-                  EMapType("boolV", ValueType.BOOL, EMultiplicity(MultiplicityType.ONE)),
-                  EMapType("textV", ValueType.TEXT, EMultiplicity(MultiplicityType.ONE))
+                  EMapType("boolV", DataType.BOOL, EMultiplicity(MultiplicityType.ONE)),
+                  EMapType("textV", DataType.TEXT, EMultiplicity(MultiplicityType.ONE))
                 ),
-                EMapType("intV", ValueType.INT, EMultiplicity(MultiplicityType.ONE))
+                EMapType("intV", DataType.INT, EMultiplicity(MultiplicityType.ONE))
               ),
-              EMapType("floatV", ValueType.FLOAT, EMultiplicity(MultiplicityType.ONE))
+              EMapType("floatV", DataType.FLOAT, EMultiplicity(MultiplicityType.ONE))
             ),
-            EMapType("dateV", ValueType.DATE, EMultiplicity(MultiplicityType.ONE))
+            EMapType("dateV", DataType.DATE, EMultiplicity(MultiplicityType.ONE))
           ),
-          EMapType("timeV", ValueType.TIME, EMultiplicity(MultiplicityType.ONE))
+          EMapType("timeV", DataType.TIME, EMultiplicity(MultiplicityType.ONE))
         ),
-        EMapType("datetimeV", ValueType.DATETIME, EMultiplicity(MultiplicityType.ONE))
+        EMapType("datetimeV", DataType.DATETIME, EMultiplicity(MultiplicityType.ONE))
       ))
     )
   }

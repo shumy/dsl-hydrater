@@ -1,10 +1,9 @@
 package hyd.dsl
 
 import kotlin.reflect.KClass
-
-enum class ValueType {
-  BOOL, TEXT, INT, FLOAT, DATE, TIME, DATETIME
-}
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.LocalDateTime
 
 enum class MultiplicityType {
   OPTIONAL, ONE, PLUS, MANY
@@ -14,7 +13,7 @@ data class Grammar(val name: String, val rules: Map<String, ERule>)
 
 data class ERule(val expr: Expression, val checkers: Map<String, EChecker> = emptyMap())
 
-data class EChecker(val key: String, val checkers: List<KClass<out DslChecker<*>>>)
+data class EChecker(val key: String, val checkers: List<ICheck>)
 
 sealed class Expression()
   data class EBound(val next: Expression, val multiplicity: EMultiplicity): Expression()
@@ -35,18 +34,29 @@ sealed class Expression()
       && name == other.name
       && rule == other.rule
     
-    override fun toString() = "ERef($rule)"
+    override fun toString() = "ERef($name)"
   }
 
-  sealed class EMap(open val key: String): Expression()
+  sealed class EMap(open val key: String, open val type: DataType<*>): Expression()
 
-    data class EMapExist(override val key: String, val value: String): EMap(key)
+    data class EMapExist(override val key: String, val value: String): EMap(key, DataType.BOOL)
 
-    data class EMapType(override val key: String, val type: ValueType, val multiplicity: EMultiplicity): EMap(key)
+    data class EMapType(override val key: String, override val type: DataType<*>, val multiplicity: EMultiplicity): EMap(key, type)
 
-    data class EMapRef(override val key: String, val ref: ERef, val multiplicity: EMultiplicity): EMap(key)
+    data class EMapRef(override val key: String, val ref: ERef, val multiplicity: EMultiplicity): EMap(key, DataType.REF)
 
 data class EMultiplicity(val type: MultiplicityType, val splitter: String? = null)
+
+sealed class DataType<T: Any>(val type: KClass<T>) {
+  object BOOL: DataType<Boolean>(Boolean::class)
+  object TEXT: DataType<String>(String::class)
+  object INT: DataType<Long>(Long::class)
+  object FLOAT: DataType<Double>(Double::class)
+  object DATE: DataType<LocalDate>(LocalDate::class)
+  object TIME: DataType<LocalTime>(LocalTime::class)
+  object DATETIME: DataType<LocalDateTime>(LocalDateTime::class)
+  object REF: DataType<Entity>(Entity::class)
+}
 
 class LazyRef(val line: Int, val pos: Int, internal var rule: ERule? = null)
 
@@ -67,7 +77,7 @@ fun Map.Entry<String, ERule>.formatRules(): String {
 }
 
 fun EChecker.format(): String {
-  val mCheckers = checkers.map{ it.simpleName }.joinToString(",")
+  val mCheckers = checkers.map{ it::class.simpleName }.joinToString(",")
   return "${key}@[$mCheckers]\n  "
 }
 
@@ -93,14 +103,15 @@ fun EMultiplicity.format(): String = when (type) {
   MultiplicityType.PLUS -> "+${splitter.format()}"
 }
 
-fun ValueType.format(): String = when (this) {
-  ValueType.BOOL -> "bool"
-  ValueType.TEXT -> "text"
-  ValueType.INT -> "int"
-  ValueType.FLOAT -> "float"
-  ValueType.DATE -> "date"
-  ValueType.TIME -> "time"
-  ValueType.DATETIME -> "datatime"
+fun DataType<*>.format(): String = when (this) {
+  DataType.BOOL -> "bool"
+  DataType.TEXT -> "text"
+  DataType.INT -> "int"
+  DataType.FLOAT -> "float"
+  DataType.DATE -> "date"
+  DataType.TIME -> "time"
+  DataType.DATETIME -> "datetime"
+  DataType.REF -> "ref"
 }
 
 fun String?.format(): String = if (this == null) "" else " '$this'"

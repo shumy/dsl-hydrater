@@ -8,8 +8,9 @@ import kotlin.reflect.KType
 import kotlin.reflect.full.isSubtypeOf
 import kotlin.reflect.typeOf
 
-import hyd.dsl.ValueType
+import hyd.dsl.DataType
 import hyd.dsl.DslException
+import hyd.dsl.Entity
 
 internal object TypeEngine {
   private val BOOL = typeOf<Boolean>()
@@ -21,15 +22,19 @@ internal object TypeEngine {
   private val DATE = typeOf<LocalDate>()
   private val DATETIME = typeOf<LocalDateTime>()
 
-  fun convert(type: KType): ValueType? {
-    if (type.isSubtypeOf(BOOL)) return ValueType.TEXT
-    if (type.isSubtypeOf(TEXT)) return ValueType.TEXT
-    if (type.isSubtypeOf(INT)) return ValueType.INT
-    if (type.isSubtypeOf(FLOAT)) return ValueType.FLOAT
+  private val REF = typeOf<Entity>()
 
-    if (type.isSubtypeOf(TIME)) return ValueType.TIME
-    if (type.isSubtypeOf(DATE)) return ValueType.DATE
-    if (type.isSubtypeOf(DATETIME)) return ValueType.DATETIME
+  fun convert(type: KType): DataType<*>? {
+    if (type.isSubtypeOf(BOOL)) return DataType.TEXT
+    if (type.isSubtypeOf(TEXT)) return DataType.TEXT
+    if (type.isSubtypeOf(INT)) return DataType.INT
+    if (type.isSubtypeOf(FLOAT)) return DataType.FLOAT
+
+    if (type.isSubtypeOf(TIME)) return DataType.TIME
+    if (type.isSubtypeOf(DATE)) return DataType.DATE
+    if (type.isSubtypeOf(DATETIME)) return DataType.DATETIME
+
+    if (type.isSubtypeOf(REF)) return DataType.REF
 
     return null
   }

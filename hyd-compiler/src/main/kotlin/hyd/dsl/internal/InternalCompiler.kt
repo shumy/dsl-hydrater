@@ -12,6 +12,7 @@ import java.util.*
 import kotlin.reflect.KClass
 import kotlin.reflect.full.defaultType
 import kotlin.reflect.full.allSupertypes
+import kotlin.reflect.full.isSubclassOf
 
 internal class InternalCompiler(private val dsl: String, private val deps: DslDependencies): HydraterDslBaseListener() {
   private lateinit var grammar: Grammar
@@ -64,6 +65,8 @@ internal class InternalCompiler(private val dsl: String, private val deps: DslDe
     val ref = findRuleRef(start.line, stop.charPositionInLine, name)
 
     val expr = expr().process()
+
+    //TODO: check for multiple checkers with the same key?
     val checkers = checker().map { it.process(expr) }.map { it.key to it }.toMap()
     ref.lRef.rule = ERule(expr, checkers)
   }
@@ -113,8 +116,13 @@ internal class InternalCompiler(private val dsl: String, private val deps: DslDe
 
   private fun CheckerContext.process(expr: Expression): EChecker {
     val key = key.text
-    val type = expr.findKey(key) ?: throw DslException(start.line, start.charPositionInLine, "Key '$key' not found in the rule expression!")
-    val checkers = identity().map { findChecker(it.start.line, it.stop.charPositionInLine, it.process(), type) }
+    val checkers = if (key == "this") {
+      identity().map { findEntityChecker(it.start.line, it.stop.charPositionInLine, it.process()) }
+    } else {
+      val type = expr.findKey(key) ?: throw DslException(start.line, start.charPositionInLine, "Key '$key' not found in the rule expression!")
+      identity().map { findValueChecker(it.start.line, it.stop.charPositionInLine, it.process(), type) }
+    }
+
     return EChecker(key, checkers)
   }
 
@@ -140,29 +148,41 @@ internal class InternalCompiler(private val dsl: String, private val deps: DslDe
     return refs.getOrPut(name) { ERef(name, LazyRef(line, pos)) }
   }
 
-  private fun findChecker(line: Int, pos: Int, name: String, type: ValueType): KClass<out DslChecker<*>> {
-    val checker = deps.checkers[name] ?: throw DslException(line, pos, "Checker '$name' not found!")
-    val value = checker.allSupertypes.first().arguments.first().type!!
-    
-    val checkerType = TypeEngine.convert(value) ?: throw DslException(line, pos, "Checker '$name' with an unrecognized type '$value'!")
+  private fun findEntityChecker(line: Int, pos: Int, name: String): ICheckEntity =
+    findChecker(ICheckEntity::class, line, pos, name)
+
+  private fun findValueChecker(line: Int, pos: Int, name: String, type: DataType<*>): ICheckValue<*, *> {
+    val checker = findChecker(ICheckValue::class, line, pos, name)
+    val value = checker::class.allSupertypes.first().arguments.first().type!!
+
+    val checkerType =TypeEngine.convert(value) ?: throw DslException(line, pos, "Checker '$name' with an unrecognized type '$value'!")
     if (checkerType != type)
-      throw DslException(line, pos, "Checker '$name' of type '$checkerType' is incompatible with dsl input '$type'!")
+      throw DslException(line, pos, "Checker '$name' of type '${checkerType::class.simpleName}' is incompatible with dsl input '${type::class.simpleName}'!")
 
     return checker
+  }
+
+  @Suppress("UNCHECKED_CAST")
+  private fun <T: ICheck> findChecker(type: KClass<T>, line: Int, pos: Int, name: String): T {
+    val checker = deps.checkers[name] ?: throw DslException(line, pos, "Checker '$name' not found!")
+    if (!checker::class.isSubclassOf(type))
+      throw DslException(line, pos, "Invalid checker '$name'. Expecting implementation of '${type.simpleName}'!")
+    
+      return checker as T
   }
 }
 
 /* ------------------------- helpers -------------------------*/
 private fun String.extract(): String = substring(1, this.length - 1)
 
-private fun String.extractType(): ValueType = when (this) {
-  "bool" -> ValueType.BOOL
-  "text" -> ValueType.TEXT
-  "int" -> ValueType.INT
-  "float" -> ValueType.FLOAT
-  "date" -> ValueType.DATE
-  "time" -> ValueType.TIME
-  "datetime" -> ValueType.DATETIME
+private fun String.extractType(): DataType<*> = when (this) {
+  "bool" -> DataType.BOOL
+  "text" -> DataType.TEXT
+  "int" -> DataType.INT
+  "float" -> DataType.FLOAT
+  "date" -> DataType.DATE
+  "time" -> DataType.TIME
+  "datetime" -> DataType.DATETIME
   else -> throw NotImplementedError("A dsl branch is not implemented! - String.type()")
 }
 
@@ -173,11 +193,11 @@ private fun String.extractMultiplicity(): MultiplicityType = when (this) {
   else -> throw NotImplementedError("A dsl branch is not implemented! - String.select()")
 }
 
-private fun Expression.findKey(name: String): ValueType? = when (this) {
+private fun Expression.findKey(name: String): DataType<*>? = when (this) {
   is EBound -> next.findKey(name)
   is EAnd -> left.findKey(name) ?: right.findKey(name)
   is EOr -> left.findKey(name) ?: right.findKey(name)
-  is EMap -> if (this is EMapType && key == name) type else null
+  is EMap -> if (key == name) type else null
   is EToken -> null
   is ERef -> null
 }

@@ -2,15 +2,15 @@ package hyd.examples
 
 import hyd.dsl.*
 
-class StartWithUpperCase: DslChecker<String> {
-  override fun check(value: String) {
+class StartWithUpperCase: ICheckValue<String, DataType.TEXT> {
+  override fun EValue<String>.check() {
     if (!value.first().isUpperCase())
       throw Exception("Name '$value' should start with UpperCase char!")
   }
 }
 
 val dependencies = DslDependencies(
-  checkers = mapOf("StartWithUpperCase" to StartWithUpperCase::class)
+  checkers = mapOf("StartWithUpperCase" to StartWithUpperCase())
 )
 
 fun getResourceAsText(path: String): String {
