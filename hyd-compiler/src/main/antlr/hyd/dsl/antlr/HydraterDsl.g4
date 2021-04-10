@@ -15,22 +15,21 @@ entity:
 checker: key=ID '@' '[' (identity (',' identity)*) ']' ;
 
 expr: '(' expr ')' multiplicity?
-  | left=expr oper='|'? right=expr
-  | token
+  | left=expr oper='|'? right=expr // replace with (end ('|' end)*) ==? or
   | map
+  | end // should I put multiplicity here?
 ;
 
-token: TEXT | NAME ;
+map: key=ID '=' assign multiplicity? ;
 
-map: key=ID assign ;
+assign: ('&' ref=NAME) | or | end ;
 
-assign: aExist | aRef | aType ;
+// --------------------------------------------------------------
+or: '(' (end ('|' end)*) ')' ; // list of ends should be of the same type?
 
-  aExist: '-exist->' TEXT ;
-  aRef: '-ref->' NAME multiplicity? ;
-  aType: '-type->' type multiplicity? ;
+end: TEXT | NAME | type ;
 
-type: value=('bool' | 'text' | 'int' | 'float' | 'date' | 'time' | 'datetime')  ;
+type: 'bool' | 'text' | 'int' | 'float' | 'date' | 'time' | 'datetime' | 'ref' ;
 
 multiplicity: value=('?' | '+' | '*') splitter=TEXT?;
 

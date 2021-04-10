@@ -23,7 +23,7 @@ class TestParsingError {
     |grammar test.Grammar ;
     |
     |value@[NonExistentChecker]
-    |Root: value -type-> text ;
+    |Root: value = text ;
     |""".trimMargin()
     dsl.expect(DslException(3, 7, "Checker 'NonExistentChecker' not found!"))
   }
@@ -33,7 +33,7 @@ class TestParsingError {
     |grammar test.Grammar ;
     |
     |value@[IsEntityValid]
-    |Root: value -type-> int ;
+    |Root: value = int ;
     |""".trimMargin()
     dsl.expect(DslException(3, 7, "Invalid checker 'IsEntityValid'. Expecting implementation of 'ICheckValue'!"))
   }
@@ -43,7 +43,7 @@ class TestParsingError {
     |grammar test.Grammar ;
     |
     |this@[StartWithUpperCase]
-    |Root: value -type-> int ;
+    |Root: value = int ;
     |""".trimMargin()
     dsl.expect(DslException(3, 6, "Invalid checker 'StartWithUpperCase'. Expecting implementation of 'ICheckEntity'!"))
   }
@@ -53,7 +53,7 @@ class TestParsingError {
     |grammar test.Grammar ;
     |
     |value@[StartWithUpperCase]
-    |Root: value -type-> int ;
+    |Root: value = int ;
     |""".trimMargin()
     dsl.expect(DslException(3, 7, "Checker 'StartWithUpperCase' of type 'TEXT' is incompatible with dsl input 'INT'!"))
   }
@@ -62,9 +62,9 @@ class TestParsingError {
     val dsl = """
     |grammar test.Grammar ;
     |
-    |Root: (value -exist-> 'test')?';' ;
+    |Root: (value = 'test')?';' ;
     |""".trimMargin()
-    dsl.expect(DslException(3, 30, "Optional multiplicity doesn't support splitter!"))
+    dsl.expect(DslException(3, 23, "Optional multiplicity doesn't support splitter!"))
   }
 
   @Test fun testKeyNotFoundInExpression() {
@@ -72,7 +72,7 @@ class TestParsingError {
     |grammar test.Grammar ;
     |
     |id@[StartWithUpperCase]
-    |Root: value -type-> text* ;
+    |Root: value = text* ;
     |""".trimMargin()
     dsl.expect(DslException(3, 0, "Key 'id' not found in the rule expression!"))
   }

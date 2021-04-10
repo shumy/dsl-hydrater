@@ -3,10 +3,10 @@ grammar test.Grammar ;
 Root: (Entity)+ ;
 
 id@[StartWithUpperCase]
-Entity: 'entity' id -type-> text '{'
-  fields -ref-> Field+ ';'
+Entity: 'entity' id=text '{'
+  fields=Field+ ';'
 '}' ;
 
-Field: name -type-> text ':' type -ref-> Type opt -exist-> '?' ;
+Field: name=text ':' type=Type opt='?' ;
 
 Type: 'bool' | 'str' | 'int' | 'flt' | 'da' | 'tm' | 'dt' ;

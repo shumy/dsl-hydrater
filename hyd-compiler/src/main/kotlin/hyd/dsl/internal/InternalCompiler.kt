@@ -83,47 +83,58 @@ internal class InternalCompiler(private val dsl: String, private val deps: DslDe
         return EOr(left.process(), right.process())
     }
 
-    if (token() != null) {
-      if (token().TEXT() != null)
-        return EToken(token().TEXT().text.extract())
-      
-      if (token().NAME() != null)
-        return findRuleRef(start.line, stop.charPositionInLine, token().NAME().text)
-    }
+    if (end() != null)
+      return end().process()
 
-    if (map() != null) {
-      val key = map().key.text
-      val assign = map().assign()
+    if (map() != null)
+      return map().process()
 
-      if (assign.aExist() != null)
-        return EMapExist(key, assign.aExist().TEXT().text.extract())
-      
-      if (assign.aRef() != null) {
-        val ref = findRuleRef(start.line, stop.charPositionInLine, assign.aRef().NAME().text)
-        return EMapRef(key, ref, assign.aRef().multiplicity().process())
-      }
-
-      if (assign.aType() != null) {
-        val vType = assign.aType().type()
-        val type = vType.value.text.extractType()
-        val multiplicity = assign.aType().multiplicity().process()
-        return EMapType(key, type, multiplicity)
-      }
-    }
-
-    throw NotImplementedError("A dsl branch is not implemented! - processExpr()")
+    throw NotImplementedError("A dsl branch is not implemented! - ExprContext.process()")
   }
 
-  private fun CheckerContext.process(expr: Expression): EChecker {
-    val key = key.text
-    val checkers = if (key == "this") {
-      identity().map { findEntityChecker(it.start.line, it.stop.charPositionInLine, it.process()) }
-    } else {
-      val type = expr.findKey(key) ?: throw DslException(start.line, start.charPositionInLine, "Key '$key' not found in the rule expression!")
-      identity().map { findValueChecker(it.start.line, it.stop.charPositionInLine, it.process(), type) }
+  private fun MapContext.process(): EMap {
+    val key = key.text // TODO: check if already exists
+    val value = assign()
+    val multiplicity = multiplicity().process()
+    
+    if (value.ref != null)
+      //TODO: check if ref entity has ID?
+      return EMap(DataType.REF, key, findRuleRef(start.line, stop.charPositionInLine, value.ref.text), multiplicity)
+
+    if (value.or() != null) {
+      val head = value.or().end().first().process()
+      val all = value.or().end().map {
+        val expr = it.process()
+        // TODO: test this fail
+        if (expr::class != head::class)
+          throw DslException(it.start.line, it.stop.charPositionInLine, "All enum values should be of the same type!")
+        expr
+      }
+
+      val type = TypeEngine.typeOf(head)
+      return EMap(type, key, EEnum(all), multiplicity)
     }
 
-    return EChecker(key, checkers)
+    if (value.end() != null) {
+      val end = value.end().process()
+      val type = TypeEngine.typeOf(end)
+      return EMap(type, key, end, multiplicity)
+    }
+
+    throw NotImplementedError("A dsl branch is not implemented! - MapContext.process()")
+  }
+
+  private fun EndContext.process(): EndExpression {
+    if (TEXT() != null)
+      return EToken(TEXT().text.extract())
+  
+    if (NAME() != null)
+      return findRuleRef(start.line, stop.charPositionInLine, NAME().text)
+
+    if (type() != null)
+      return EType(TypeEngine.extract(type().text))
+    
+    throw NotImplementedError("A dsl branch is not implemented! - TokenContext.process()")
   }
 
   private fun IdentityContext.process(): String {
@@ -142,6 +153,18 @@ internal class InternalCompiler(private val dsl: String, private val deps: DslDe
 
       EMultiplicity(type, splitter)
     } ?: EMultiplicity(MultiplicityType.ONE)
+  }
+
+  private fun CheckerContext.process(expr: Expression): EChecker {
+    val key = key.text
+    val checkers = if (key == "this") {
+      identity().map { findEntityChecker(it.start.line, it.stop.charPositionInLine, it.process()) }
+    } else {
+      val type = expr.findKey(key) ?: throw DslException(start.line, start.charPositionInLine, "Key '$key' not found in the rule expression!")
+      identity().map { findValueChecker(it.start.line, it.stop.charPositionInLine, it.process(), type) }
+    }
+
+    return EChecker(key, checkers)
   }
 
   private fun findRuleRef(line: Int, pos: Int, name: String): ERef {
@@ -175,22 +198,11 @@ internal class InternalCompiler(private val dsl: String, private val deps: DslDe
 /* ------------------------- helpers -------------------------*/
 private fun String.extract(): String = substring(1, this.length - 1)
 
-private fun String.extractType(): DataType<*> = when (this) {
-  "bool" -> DataType.BOOL
-  "text" -> DataType.TEXT
-  "int" -> DataType.INT
-  "float" -> DataType.FLOAT
-  "date" -> DataType.DATE
-  "time" -> DataType.TIME
-  "datetime" -> DataType.DATETIME
-  else -> throw NotImplementedError("A dsl branch is not implemented! - String.type()")
-}
-
 private fun String.extractMultiplicity(): MultiplicityType = when (this) {
   "?" -> MultiplicityType.OPTIONAL
   "+" -> MultiplicityType.PLUS
   "*" -> MultiplicityType.MANY
-  else -> throw NotImplementedError("A dsl branch is not implemented! - String.select()")
+  else -> throw NotImplementedError("A dsl branch is not implemented! - String.extractMultiplicity()")
 }
 
 private fun Expression.findKey(name: String): DataType<*>? = when (this) {
@@ -198,6 +210,5 @@ private fun Expression.findKey(name: String): DataType<*>? = when (this) {
   is EAnd -> left.findKey(name) ?: right.findKey(name)
   is EOr -> left.findKey(name) ?: right.findKey(name)
   is EMap -> if (key == name) type else null
-  is EToken -> null
-  is ERef -> null
+  else -> null
 }

@@ -8,9 +8,7 @@ import kotlin.reflect.KType
 import kotlin.reflect.full.isSubtypeOf
 import kotlin.reflect.typeOf
 
-import hyd.dsl.DataType
-import hyd.dsl.DslException
-import hyd.dsl.Entity
+import hyd.dsl.*
 
 internal object TypeEngine {
   private val BOOL = typeOf<Boolean>()
@@ -37,5 +35,24 @@ internal object TypeEngine {
     if (type.isSubtypeOf(REF)) return DataType.REF
 
     return null
+  }
+
+  fun extract(type: String): DataType<*> = when (type) {
+    "bool" -> DataType.BOOL
+    "text" -> DataType.TEXT
+    "int" -> DataType.INT
+    "float" -> DataType.FLOAT
+    "date" -> DataType.DATE
+    "time" -> DataType.TIME
+    "datetime" -> DataType.DATETIME
+    "ref" -> DataType.REF
+    else -> throw NotImplementedError("A dsl branch is not implemented! - String.type()")
+  }
+
+  fun typeOf(end: EndExpression): DataType<*> = when (end) {
+    is EToken -> DataType.BOOL
+    is ERef -> DataType.EMBEDDED
+    is EType -> end.type
+    is EEnum -> typeOf(end.values.first())
   }
 }
