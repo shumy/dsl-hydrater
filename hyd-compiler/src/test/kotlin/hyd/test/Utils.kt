@@ -4,15 +4,24 @@ class IsEntityValid: ICheckEntity {
   override fun Entity.check() = throw NotImplementedError("Just a test!")
 }
 
-class StartWithUpperCase: ICheckValue<String, DataType.TEXT> {
+class StartWithUpperCase: ICheckValue<String> {
   override fun EValue<String>.check() = throw NotImplementedError("Just a test!")
 }
 
+class UnrecognizedType: ICheckValue<Void> {
+  override fun EValue<Void>.check() = throw NotImplementedError("Just a test!")
+}
+
 val isEntityValid = IsEntityValid()
+val unrecognizedType = UnrecognizedType()
 val startWithUpperCase = StartWithUpperCase()
 
 val dependencies = DslDependencies(
-  checkers = mapOf("IsEntityValid" to isEntityValid, "StartWithUpperCase" to startWithUpperCase)
+  checkers = mapOf(
+    "IsEntityValid" to isEntityValid,
+    "UnrecognizedType" to unrecognizedType,
+    "StartWithUpperCase" to startWithUpperCase
+  )
 )
 
 val compiler = DslCompiler(dependencies)

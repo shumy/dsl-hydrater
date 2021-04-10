@@ -37,6 +37,16 @@ class TestParsingError {
     dsl.expect(DslException(3, 7, "Checker 'NonExistentChecker' not found!"))
   }
 
+  @Test fun testCheckerUnrecognizedType() {
+    val dsl = """
+    |grammar test.Grammar ;
+    |
+    |value@[UnrecognizedType]
+    |Root: value = int ;
+    |""".trimMargin()
+    dsl.expect(DslException(3, 7, "Checker 'UnrecognizedType' with an unrecognized type 'java.lang.Void'!"))
+  }
+
   @Test fun testInvalidCheckEntity() {
     val dsl = """
     |grammar test.Grammar ;
@@ -64,7 +74,7 @@ class TestParsingError {
     |value@[StartWithUpperCase]
     |Root: value = int ;
     |""".trimMargin()
-    dsl.expect(DslException(3, 7, "Checker 'StartWithUpperCase' of type 'TEXT' is incompatible with dsl input 'INT'!"))
+    dsl.expect(DslException(3, 7, "Checker 'StartWithUpperCase' of type 'String' is incompatible with dsl input 'Long'!"))
   }
 
   @Test fun testOptionalNotSupportSplitter() {
@@ -80,9 +90,9 @@ class TestParsingError {
     val dsl = """
     |grammar test.Grammar ;
     |
-    |id@[StartWithUpperCase]
+    |name@[StartWithUpperCase]
     |Root: value = text* ;
     |""".trimMargin()
-    dsl.expect(DslException(3, 0, "Key 'id' not found in the rule expression!"))
+    dsl.expect(DslException(3, 0, "Key 'name' not found in the rule expression!"))
   }
 }

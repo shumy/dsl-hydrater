@@ -19,7 +19,7 @@ internal class InternalCompiler(private val dsl: String, private val deps: DslDe
 
   private val errorListener = ErrorListener()
   private val errors = mutableListOf<DslException>()
-  private val refs = mutableMapOf<String, ERef>()
+  private val refs = mutableMapOf<String, LazyRef>()
 
   internal fun compile(): DslResult {
     try {
@@ -52,7 +52,7 @@ internal class InternalCompiler(private val dsl: String, private val deps: DslDe
 
     // second pass necessary to check lazy references
     val rules = refs.map {
-      val expr = it.value.lRef.rule ?: throw DslException(it.value.lRef.line, it.value.lRef.pos, "Rule '${it.key}' not found!")
+      val expr = it.value.rule ?: throw DslException(it.value.line, it.value.pos, "Rule '${it.key}' not found!")
       it.key to expr
     }.toMap()
 
@@ -68,7 +68,7 @@ internal class InternalCompiler(private val dsl: String, private val deps: DslDe
 
     //TODO: check for multiple checkers with the same key?
     val checkers = checker().map { it.process(expr) }.map { it.key to it }.toMap()
-    ref.lRef.rule = ERule(expr, checkers)
+    ref.rule = ERule(expr, checkers)
   }
 
   private fun ExprContext.process(): Expression {
@@ -97,10 +97,6 @@ internal class InternalCompiler(private val dsl: String, private val deps: DslDe
     val value = assign()
     val multiplicity = multiplicity().process()
     
-    if (value.ref != null)
-      //TODO: check if ref entity has ID?
-      return EMap(DataType.REF, key, findRuleRef(start.line, stop.charPositionInLine, value.ref.text), multiplicity)
-
     if (value.or() != null) {
       val head = value.or().end().first().process()
       val all = value.or().end().map {
@@ -110,13 +106,13 @@ internal class InternalCompiler(private val dsl: String, private val deps: DslDe
         expr
       }
 
-      val type = TypeEngine.typeOf(head)
+      val type = head.typeOf()
       return EMap(type, key, EEnum(all), multiplicity)
     }
 
     if (value.end() != null) {
       val end = value.end().process()
-      val type = TypeEngine.typeOf(end)
+      val type = end.typeOf()
       return EMap(type, key, end, multiplicity)
     }
 
@@ -128,10 +124,13 @@ internal class InternalCompiler(private val dsl: String, private val deps: DslDe
       return EToken(TEXT().text.extract())
   
     if (NAME() != null)
-      return findRuleRef(start.line, stop.charPositionInLine, NAME().text)
+      return ERef(NAME().text, findRuleRef(start.line, stop.charPositionInLine, NAME().text), embedded = true)
 
     if (type() != null)
       return EType(TypeEngine.extract(type().text))
+    
+    if (ref() != null)
+      return ERef(ref().NAME().text, findRuleRef(start.line, stop.charPositionInLine, ref().NAME().text), embedded = false)
     
     throw NotImplementedError("A dsl branch is not implemented! - TokenContext.process()")
   }
@@ -166,21 +165,20 @@ internal class InternalCompiler(private val dsl: String, private val deps: DslDe
     return EChecker(key, checkers)
   }
 
-  private fun findRuleRef(line: Int, pos: Int, name: String): ERef {
-    return refs.getOrPut(name) { ERef(name, LazyRef(line, pos)) }
+  private fun findRuleRef(line: Int, pos: Int, name: String): LazyRef {
+    return refs.getOrPut(name) { LazyRef(line, pos) }
   }
 
   private fun findEntityChecker(line: Int, pos: Int, name: String): ICheckEntity =
     findChecker(ICheckEntity::class, line, pos, name)
 
-  private fun findValueChecker(line: Int, pos: Int, name: String, type: DataType<*>): ICheckValue<*, *> {
+  private fun findValueChecker(line: Int, pos: Int, name: String, dataType: DataType<*>): ICheckValue<*> {
     val checker = findChecker(ICheckValue::class, line, pos, name)
-    val value = checker::class.allSupertypes.first().arguments.first().type!!
+    val checkerType = checker::class.allSupertypes.first().arguments.first().type!!
 
-    // FIX: not working correctly with EMBEDDED
-    val checkerType =TypeEngine.convert(value) ?: throw DslException(line, pos, "Checker '$name' with an unrecognized type '$value'!")
-    if (checkerType != type)
-      throw DslException(line, pos, "Checker '$name' of type '${checkerType::class.simpleName}' is incompatible with dsl input '${type::class.simpleName}'!")
+    val checkerDataType = TypeEngine.convert(checkerType) ?: throw DslException(line, pos, "Checker '$name' with an unrecognized type '$checkerType'!")
+    if (checkerDataType.type != dataType.type)
+      throw DslException(line, pos, "Checker '$name' of type '${checkerDataType.type.simpleName}' is incompatible with dsl input '${dataType.type.simpleName}'!")
 
     return checker
   }
@@ -211,4 +209,11 @@ private fun Expression.findKey(name: String): DataType<*>? = when (this) {
   is EOr -> left.findKey(name) ?: right.findKey(name)
   is EMap -> if (key == name) type else null
   else -> null
+}
+
+private fun EndExpression.typeOf(): DataType<*> = when (this) {
+  is EToken -> DataType.BOOL
+  is ERef -> DataType.REF
+  is EType -> type
+  is EEnum -> values.first().typeOf()
 }

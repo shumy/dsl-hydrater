@@ -2,7 +2,7 @@ package hyd.examples
 
 import hyd.dsl.*
 
-class StartWithUpperCase: ICheckValue<String, DataType.TEXT> {
+class StartWithUpperCase: ICheckValue<String> {
   override fun EValue<String>.check() {
     if (!value.first().isUpperCase())
       throw Exception("Name '$value' should start with UpperCase char!")

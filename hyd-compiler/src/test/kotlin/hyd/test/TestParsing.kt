@@ -39,13 +39,28 @@ class TestParsing {
     val dsl = """
       grammar test.Grammar ;
 
+      Root: &Rule ;
+      
+      Rule: 'token' ; 
+    """
+    val Rule = ERule(EToken("token"))
+    dsl.check(
+      "Root" to ERule(ERef("Rule", Rule, embedded = false)),
+      "Rule" to Rule
+    )
+  }
+
+  @Test fun testEmbeddedExpression() {
+    val dsl = """
+      grammar test.Grammar ;
+
       Root: Rule ;
       
       Rule: 'token' ; 
     """
     val Rule = ERule(EToken("token"))
     dsl.check(
-      "Root" to ERule(ERef("Rule", Rule)),
+      "Root" to ERule(ERef("Rule", Rule, embedded = true)),
       "Rule" to Rule
     )
   }
@@ -83,7 +98,7 @@ class TestParsing {
     """
     val Rule = ERule(EToken("token"))
     dsl.check(
-      "Root" to ERule(EMap(DataType.EMBEDDED, "value", ERef("Rule", Rule), EMultiplicity(MultiplicityType.ONE))),
+      "Root" to ERule(EMap(DataType.REF, "value", ERef("Rule", Rule, embedded = true), EMultiplicity(MultiplicityType.ONE))),
       "Rule" to Rule
     )
   }
@@ -98,7 +113,7 @@ class TestParsing {
     """
     val Rule = ERule(EToken("token"))
     dsl.check(
-      "Root" to ERule(EMap(DataType.REF, "value", ERef("Rule", Rule), EMultiplicity(MultiplicityType.ONE))),
+      "Root" to ERule(EMap(DataType.REF, "value", ERef("Rule", Rule, embedded = false), EMultiplicity(MultiplicityType.ONE))),
       "Rule" to Rule
     )
   }
@@ -113,7 +128,7 @@ class TestParsing {
     """
     val Rule = ERule(EToken("token"))
     dsl.check(
-      "Root" to ERule(EMap(DataType.REF, "value", ERef("Rule", Rule), EMultiplicity(MultiplicityType.MANY))),
+      "Root" to ERule(EMap(DataType.REF, "value", ERef("Rule", Rule, embedded = false), EMultiplicity(MultiplicityType.MANY))),
       "Rule" to Rule
     )
   }
@@ -130,13 +145,11 @@ class TestParsing {
         | dateV = date
         | timeV = time
         | datetimeV = datetime
-        | embeddedV = embedded
         | refV = ref
       ;
     """
     dsl.check(
       "Root" to ERule(EOr(
-        EOr(
           EOr(
             EOr(
               EOr(
@@ -156,10 +169,9 @@ class TestParsing {
             ),
             EMap(DataType.DATETIME, "datetimeV", EType(DataType.DATETIME), EMultiplicity(MultiplicityType.ONE))
           ),
-          EMap(DataType.EMBEDDED, "embeddedV", EType(DataType.EMBEDDED), EMultiplicity(MultiplicityType.ONE))
-        ),
-        EMap(DataType.REF, "refV", EType(DataType.REF), EMultiplicity(MultiplicityType.ONE))
-      ))
+          EMap(DataType.REF, "refV", EType(DataType.REF), EMultiplicity(MultiplicityType.ONE))
+        )
+      )
     )
   }
 
@@ -174,7 +186,7 @@ class TestParsing {
     val Rule = ERule(EBound(EOr(EToken("v1"), EToken("v2")), EMultiplicity(MultiplicityType.ONE)))
     dsl.check(
       "Root" to ERule(EBound(
-        EAnd(EToken("set"), ERef("Rule", Rule)),
+        EAnd(EToken("set"), ERef("Rule", Rule, embedded = true)),
         EMultiplicity(MultiplicityType.PLUS, ";")
       )),
       "Rule" to Rule

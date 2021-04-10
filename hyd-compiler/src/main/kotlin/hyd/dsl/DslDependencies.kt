@@ -12,6 +12,6 @@ interface ICheckEntity: ICheck {
   fun Entity.check()
 }
 
-interface ICheckValue<T: Any, D: DataType<T>>: ICheck {
+interface ICheckValue<T: Any>: ICheck {
   fun EValue<T>.check()
 }

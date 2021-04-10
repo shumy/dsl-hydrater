@@ -23,8 +23,8 @@ sealed class Expression()
     data class EToken(val value: String): EndExpression()
     data class EType(val type: DataType<*>): EndExpression()
     data class EEnum(val values: List<EndExpression>): EndExpression()
-    class ERef(val name: String, internal val lRef: LazyRef): EndExpression() {
-      constructor(name: String, rule: ERule) : this(name, LazyRef(0, 0, rule))
+    class ERef(val name: String, internal val lRef: LazyRef, val embedded: Boolean): EndExpression() {
+      constructor(name: String, rule: ERule, embedded: Boolean) : this(name, LazyRef(0, 0, rule), embedded)
 
       val rule: ERule
         get() = lRef.rule!!
@@ -32,13 +32,16 @@ sealed class Expression()
       override fun equals(other: Any?) = (other is ERef)
         && name == other.name
         && rule == other.rule
+        && embedded == other.embedded
       
-      override fun toString() = "ERef($name)"
+      override fun toString() = "ERef($name, $embedded)"
     }
 
 data class EMultiplicity(val type: MultiplicityType, val splitter: String? = null)
 
 sealed class DataType<T: Any>(val type: KClass<T>) {
+  object ID: DataType<String>(String::class)
+  object REF: DataType<Entity>(Entity::class)
   object BOOL: DataType<Boolean>(Boolean::class)
   object TEXT: DataType<String>(String::class)
   object INT: DataType<Long>(Long::class)
@@ -46,8 +49,6 @@ sealed class DataType<T: Any>(val type: KClass<T>) {
   object DATE: DataType<LocalDate>(LocalDate::class)
   object TIME: DataType<LocalTime>(LocalTime::class)
   object DATETIME: DataType<LocalDateTime>(LocalDateTime::class)
-  object EMBEDDED: DataType<Entity>(Entity::class)
-  object REF: DataType<Entity>(Entity::class)
 }
 
 class LazyRef(val line: Int, val pos: Int, internal var rule: ERule? = null)
@@ -96,6 +97,8 @@ fun EMultiplicity.format(): String = when (type) {
 }
 
 fun DataType<*>.format(): String = when (this) {
+  DataType.ID -> "id"
+  DataType.REF -> "ref"
   DataType.BOOL -> "bool"
   DataType.TEXT -> "text"
   DataType.INT -> "int"
@@ -103,8 +106,6 @@ fun DataType<*>.format(): String = when (this) {
   DataType.DATE -> "date"
   DataType.TIME -> "time"
   DataType.DATETIME -> "datetime"
-  DataType.EMBEDDED -> "embedded" 
-  DataType.REF -> "ref"
 }
 
 fun String?.format(): String = if (this == null) "" else " #'$this'"

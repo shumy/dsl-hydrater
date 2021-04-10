@@ -22,14 +22,16 @@ expr: '(' expr ')' multiplicity?
 
 map: key=ID '=' assign multiplicity? ;
 
-assign: ('&' ref=NAME) | or | end ;
+  assign: or | end ;
+
+    or: '(' (end ('|' end)*) ')' ;
+
+    end: TEXT | NAME | type | ref;
 
 // --------------------------------------------------------------
-or: '(' (end ('|' end)*) ')' ;
+ref: '&' NAME ;
 
-end: TEXT | NAME | type ;
-
-type: 'bool' | 'text' | 'int' | 'float' | 'date' | 'time' | 'datetime' | 'embedded' | 'ref' ;
+type: 'id' | 'ref' | 'bool' | 'text' | 'int' | 'float' | 'date' | 'time' | 'datetime' ;
 
 multiplicity: value=('?' | '+' | '*') ('#' splitter=TEXT)?;
 

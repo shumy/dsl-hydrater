@@ -2,8 +2,8 @@ grammar test.Grammar ;
 
 Root: (Entity)+ ;
 
-id@[StartWithUpperCase]
-Entity: 'entity' id=text '{'
+name@[StartWithUpperCase]
+Entity: 'entity' name=id '{'
   fields=Field+ #';'
 '}' ;
 

@@ -20,10 +20,12 @@ internal object TypeEngine {
   private val DATE = typeOf<LocalDate>()
   private val DATETIME = typeOf<LocalDateTime>()
 
-  private val REF = typeOf<Entity>()
+  private val ENTITY = typeOf<Entity>()
 
   fun convert(type: KType): DataType<*>? {
-    if (type.isSubtypeOf(BOOL)) return DataType.TEXT
+    if (type.isSubtypeOf(ENTITY)) return DataType.REF
+
+    if (type.isSubtypeOf(BOOL)) return DataType.BOOL
     if (type.isSubtypeOf(TEXT)) return DataType.TEXT
     if (type.isSubtypeOf(INT)) return DataType.INT
     if (type.isSubtypeOf(FLOAT)) return DataType.FLOAT
@@ -32,12 +34,12 @@ internal object TypeEngine {
     if (type.isSubtypeOf(DATE)) return DataType.DATE
     if (type.isSubtypeOf(DATETIME)) return DataType.DATETIME
 
-    if (type.isSubtypeOf(REF)) return DataType.REF
-
     return null
   }
 
   fun extract(type: String): DataType<*> = when (type) {
+    "id" -> DataType.ID
+    "ref" -> DataType.REF
     "bool" -> DataType.BOOL
     "text" -> DataType.TEXT
     "int" -> DataType.INT
@@ -45,15 +47,6 @@ internal object TypeEngine {
     "date" -> DataType.DATE
     "time" -> DataType.TIME
     "datetime" -> DataType.DATETIME
-    "embedded" -> DataType.EMBEDDED
-    "ref" -> DataType.REF
     else -> throw NotImplementedError("A dsl branch is not implemented! - String.type()")
-  }
-
-  fun typeOf(end: EndExpression): DataType<*> = when (end) {
-    is EToken -> DataType.BOOL
-    is ERef -> DataType.EMBEDDED
-    is EType -> end.type
-    is EEnum -> typeOf(end.values.first())
   }
 }
