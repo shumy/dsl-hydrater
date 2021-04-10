@@ -28,7 +28,7 @@ class TestParsing {
     val dsl = """
       grammar test.Grammar ;
 
-      Root: 'left' & 'right' ;
+      Root: 'left' 'right' ;
     """
     dsl.check(
       "Root" to ERule(EAnd(EToken("left"), EToken("right")))
@@ -151,7 +151,7 @@ class TestParsing {
     val dsl = """
       grammar test.Grammar ;
 
-      Root: ('set' & Rule)+';' ;
+      Root: ('set' Rule)+';' ;
 
       Rule: ('v1' | 'v2') ;
     """

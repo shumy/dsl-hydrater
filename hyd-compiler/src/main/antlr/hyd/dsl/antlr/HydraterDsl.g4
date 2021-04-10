@@ -15,13 +15,12 @@ entity:
 checker: key=ID '@' '[' (identity (',' identity)*) ']' ;
 
 expr: '(' expr ')' multiplicity?
-  | left=expr oper='&' right=expr
-  | left=expr oper='|' right=expr
-  | single
+  | left=expr oper='|'? right=expr
+  | token
   | map
 ;
 
-single: token=TEXT | ref=NAME ;
+token: TEXT | NAME ;
 
 map: key=ID assign ;
 

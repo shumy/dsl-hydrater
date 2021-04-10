@@ -83,7 +83,7 @@ fun EChecker.format(): String {
 
 fun Expression.format(): String = when (this) {
   is EBound -> "(${next.format()})${multiplicity.format()}"
-  is EAnd -> "${left.format()} & ${right.format()}"
+  is EAnd -> "${left.format()} ${right.format()}"
   is EOr -> "${left.format()} | ${right.format()}"
   is EToken -> "'$value'"
   is ERef -> name

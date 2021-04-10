@@ -75,20 +75,20 @@ internal class InternalCompiler(private val dsl: String, private val deps: DslDe
     if (expr().size == 1)
       return EBound(expr().last().process(), multiplicity().process())
 
-    if (oper != null) {
-      if (oper.text == "&")
+    if (left != null) {
+      if (oper == null)
         return EAnd(left.process(), right.process())
 
       if (oper.text == "|")
         return EOr(left.process(), right.process())
     }
 
-    if (single() != null) {
-      if (single().token != null)
-        return EToken(single().token.text.extract())
+    if (token() != null) {
+      if (token().TEXT() != null)
+        return EToken(token().TEXT().text.extract())
       
-      if (single().ref != null)
-        return findRuleRef(start.line, stop.charPositionInLine, single().ref.text)
+      if (token().NAME() != null)
+        return findRuleRef(start.line, stop.charPositionInLine, token().NAME().text)
     }
 
     if (map() != null) {
