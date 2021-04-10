@@ -177,6 +177,7 @@ internal class InternalCompiler(private val dsl: String, private val deps: DslDe
     val checker = findChecker(ICheckValue::class, line, pos, name)
     val value = checker::class.allSupertypes.first().arguments.first().type!!
 
+    // FIX: not working correctly with EMBEDDED
     val checkerType =TypeEngine.convert(value) ?: throw DslException(line, pos, "Checker '$name' with an unrecognized type '$value'!")
     if (checkerType != type)
       throw DslException(line, pos, "Checker '$name' of type '${checkerType::class.simpleName}' is incompatible with dsl input '${type::class.simpleName}'!")

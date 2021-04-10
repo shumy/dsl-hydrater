@@ -71,9 +71,9 @@ class TestParsingError {
     val dsl = """
     |grammar test.Grammar ;
     |
-    |Root: (value = 'test')?';' ;
+    |Root: (value = 'test')? #';' ;
     |""".trimMargin()
-    dsl.expect(DslException(3, 23, "Optional multiplicity doesn't support splitter!"))
+    dsl.expect(DslException(3, 25, "Optional multiplicity doesn't support splitter!"))
   }
 
   @Test fun testKeyNotFoundInExpression() {

@@ -163,11 +163,11 @@ class TestParsing {
     )
   }
 
-  @Test fun testExprWithMultiplicityExpression() {
+  @Test fun testMultiplicityExpression() {
     val dsl = """
       grammar test.Grammar ;
 
-      Root: ('set' Rule)+';' ;
+      Root: ('set' Rule)+ #';' ;
 
       Rule: ('v1' | 'v2') ;
     """

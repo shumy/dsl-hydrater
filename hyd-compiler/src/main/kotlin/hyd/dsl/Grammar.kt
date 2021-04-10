@@ -107,4 +107,4 @@ fun DataType<*>.format(): String = when (this) {
   DataType.REF -> "ref"
 }
 
-fun String?.format(): String = if (this == null) "" else " '$this'"
+fun String?.format(): String = if (this == null) "" else " #'$this'"

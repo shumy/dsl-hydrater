@@ -31,7 +31,7 @@ end: TEXT | NAME | type ;
 
 type: 'bool' | 'text' | 'int' | 'float' | 'date' | 'time' | 'datetime' | 'embedded' | 'ref' ;
 
-multiplicity: value=('?' | '+' | '*') splitter=TEXT?;
+multiplicity: value=('?' | '+' | '*') ('#' splitter=TEXT)?;
 
 identity: (ID '.')* NAME ;
 
