@@ -45,6 +45,7 @@ internal object TypeEngine {
     "date" -> DataType.DATE
     "time" -> DataType.TIME
     "datetime" -> DataType.DATETIME
+    "embedded" -> DataType.EMBEDDED
     "ref" -> DataType.REF
     else -> throw NotImplementedError("A dsl branch is not implemented! - String.type()")
   }

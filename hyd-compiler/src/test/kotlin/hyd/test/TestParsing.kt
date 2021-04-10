@@ -61,6 +61,18 @@ class TestParsing {
     )
   }
 
+  @Test fun testMapEnumExpression() {
+    val dsl = """
+      grammar test.Grammar ;
+
+      Root: value = ('one' | 'two' | 'three')+ ;
+    """
+    val values = listOf(EToken("one"), EToken("two"), EToken("three"))
+    dsl.check(
+      "Root" to ERule(EMap(DataType.BOOL, "value", EEnum(values), EMultiplicity(MultiplicityType.PLUS)))
+    )
+  }
+
   @Test fun testMapEmbeddedExpression() {
     val dsl = """
       grammar test.Grammar ;
@@ -106,25 +118,6 @@ class TestParsing {
     )
   }
 
-  @Test fun testCheckers() {
-    val dsl = """
-      grammar test.Grammar ;
-
-      this@[IsEntityValid]
-      value@[StartWithUpperCase]
-      Root: value = text* ;
-    """
-    dsl.check(
-      "Root" to ERule(
-        EMap(DataType.TEXT, "value", EType(DataType.TEXT), EMultiplicity(MultiplicityType.MANY)),
-        mapOf(
-          "value" to EChecker("value", listOf(startWithUpperCase)),
-          "this" to EChecker("this", listOf(isEntityValid))
-        )
-      )
-    )
-  }
-
   @Test fun testAllMapTypeExpression() {
     val dsl = """
       grammar test.Grammar ;
@@ -137,6 +130,7 @@ class TestParsing {
         | dateV = date
         | timeV = time
         | datetimeV = datetime
+        | embeddedV = embedded
         | refV = ref
       ;
     """
@@ -148,22 +142,25 @@ class TestParsing {
               EOr(
                 EOr(
                   EOr(
-                    EMap(DataType.BOOL, "boolV", EType(DataType.BOOL), EMultiplicity(MultiplicityType.ONE)),
-                    EMap(DataType.TEXT, "textV", EType(DataType.TEXT), EMultiplicity(MultiplicityType.ONE))
+                    EOr(
+                      EMap(DataType.BOOL, "boolV", EType(DataType.BOOL), EMultiplicity(MultiplicityType.ONE)),
+                      EMap(DataType.TEXT, "textV", EType(DataType.TEXT), EMultiplicity(MultiplicityType.ONE))
+                    ),
+                    EMap(DataType.INT, "intV", EType(DataType.INT), EMultiplicity(MultiplicityType.ONE))
                   ),
-                  EMap(DataType.INT, "intV", EType(DataType.INT), EMultiplicity(MultiplicityType.ONE))
+                  EMap(DataType.FLOAT, "floatV", EType(DataType.FLOAT), EMultiplicity(MultiplicityType.ONE))
                 ),
-                EMap(DataType.FLOAT, "floatV", EType(DataType.FLOAT), EMultiplicity(MultiplicityType.ONE))
+                EMap(DataType.DATE, "dateV", EType(DataType.DATE), EMultiplicity(MultiplicityType.ONE))
               ),
-              EMap(DataType.DATE, "dateV", EType(DataType.DATE), EMultiplicity(MultiplicityType.ONE))
+              EMap(DataType.TIME,"timeV", EType(DataType.TIME), EMultiplicity(MultiplicityType.ONE))
             ),
-            EMap(DataType.TIME,"timeV", EType(DataType.TIME), EMultiplicity(MultiplicityType.ONE))
+            EMap(DataType.DATETIME, "datetimeV", EType(DataType.DATETIME), EMultiplicity(MultiplicityType.ONE))
           ),
-          EMap(DataType.DATETIME, "datetimeV", EType(DataType.DATETIME), EMultiplicity(MultiplicityType.ONE))
+          EMap(DataType.EMBEDDED, "embeddedV", EType(DataType.EMBEDDED), EMultiplicity(MultiplicityType.ONE))
         ),
         EMap(DataType.REF, "refV", EType(DataType.REF), EMultiplicity(MultiplicityType.ONE))
-      )
-    ))
+      ))
+    )
   }
 
   @Test fun testExprWithMultiplicityExpression() {
@@ -181,6 +178,25 @@ class TestParsing {
         EMultiplicity(MultiplicityType.PLUS, ";")
       )),
       "Rule" to Rule
+    )
+  }
+
+  @Test fun testCheckers() {
+    val dsl = """
+      grammar test.Grammar ;
+
+      this@[IsEntityValid]
+      value@[StartWithUpperCase]
+      Root: value = text* ;
+    """
+    dsl.check(
+      "Root" to ERule(
+        EMap(DataType.TEXT, "value", EType(DataType.TEXT), EMultiplicity(MultiplicityType.MANY)),
+        mapOf(
+          "value" to EChecker("value", listOf(startWithUpperCase)),
+          "this" to EChecker("this", listOf(isEntityValid))
+        )
+      )
     )
   }
 }

@@ -18,6 +18,15 @@ class TestParsingError {
     dsl.expect(DslException(3, 6, "Rule 'Rule' not found!"))
   }
 
+  @Test fun testSameTypeEnumExpression() {
+    val dsl = """
+    |grammar test.Grammar ;
+    |
+    |Root: value = ('text' | int) ;
+    |""".trimMargin()
+    dsl.expect(DslException(3, 24, "All enum values should be of the same type!"))
+  }
+
   @Test fun testCheckerNotFound() {
     val dsl = """
     |grammar test.Grammar ;

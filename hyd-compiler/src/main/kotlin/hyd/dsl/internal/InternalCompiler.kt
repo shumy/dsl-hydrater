@@ -105,7 +105,6 @@ internal class InternalCompiler(private val dsl: String, private val deps: DslDe
       val head = value.or().end().first().process()
       val all = value.or().end().map {
         val expr = it.process()
-        // TODO: test this fail
         if (expr::class != head::class)
           throw DslException(it.start.line, it.stop.charPositionInLine, "All enum values should be of the same type!")
         expr
